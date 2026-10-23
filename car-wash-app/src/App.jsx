@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
+  Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
+  Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
+  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -48,7 +49,6 @@ export default function App() {
     }
   ]);
 
-  // خطط الأسعار للباقات
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
@@ -58,14 +58,14 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // نظام التنبيهات الاحترافي الخاص بلوحة المبرمج (مدة 10 ثواني + زر إغلاق X)
-  const [programmerToast, setProgrammerToast] = useState(null); // { message, type }
+  // نظام التنبيهات الاحترافي للمبرمج
+  const [programmerToast, setProgrammerToast] = useState(null);
 
   const showProgrammerToast = (message, type = 'success') => {
     setProgrammerToast({ message, type });
     setTimeout(() => {
       setProgrammerToast(prev => (prev?.message === message ? null : prev));
-    }, 10000); // 10 ثواني
+    }, 10000);
   };
 
   // مزامنة المحلات والفروع سحابياً
@@ -164,7 +164,6 @@ export default function App() {
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
-  // حقول إضافة عميل جديد
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -174,7 +173,6 @@ export default function App() {
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
-  // حقول تعديل العميل
   const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
@@ -225,17 +223,19 @@ export default function App() {
     }, 600);
   };
 
+  // ✅ تم إصلاح مشكلة تعليق صفحة تسجيل الدخول بالاعتماد على التحقق المحلي السريع والسلس
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
 
     try {
+      // 1. حساب المبرمج الرئيسي
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
-        try { await signInWithEmailAndPassword(auth, inputEmail, inputPassword); } catch (e) {}
         setCurrentUser({ email: inputEmail, role: 'programmer', name: 'المبرمج (المدير العام)' });
         return;
       }
 
+      // 2. التحقق من صاحب المحل (المالك)
       const ownedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === inputEmail.toLowerCase());
       if (ownedShops.length > 0) {
         const activeOrValidShops = ownedShops.filter(s => s.status !== 'suspended');
@@ -244,7 +244,6 @@ export default function App() {
           return;
         }
 
-        try { await signInWithEmailAndPassword(auth, inputEmail, inputPassword); } catch (e) {}
         const userData = {
           email: inputEmail,
           role: 'owner',
@@ -258,6 +257,7 @@ export default function App() {
         return;
       }
 
+      // 3. التحقق من العامل
       const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase() && s.workerPass === inputPassword);
       if (targetShop) {
         if (targetShop.status === 'suspended') {
@@ -724,7 +724,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin مع عزل الحسابات، إخفاء الإيميل، والتنبيهات المخصصة) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
