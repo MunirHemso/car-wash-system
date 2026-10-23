@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp, Layers
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -43,7 +43,7 @@ export default function App() {
       status: 'active',
       subscriptionType: 'trial',
       subscriptionExpiry: '2026-11-01',
-      discountPercent: 0, // نسبة الخصم المباشر
+      discountPercent: 0,
       suspendedAt: null
     }
   ]);
@@ -55,7 +55,6 @@ export default function App() {
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة' }
   ]);
 
-  // حقول تخصيص خصم مباشر للعميل
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
@@ -482,6 +481,24 @@ export default function App() {
     } catch (error) {}
   };
 
+  const handleSettleDebtAction = async (shopId, debtObj) => {
+    try {
+      await deleteDoc(doc(db, "shops", String(shopId), "debts", String(debtObj.id)));
+      await addDoc(collection(db, "shops", String(shopId), "debtRepayments"), {
+        debtorName: debtObj.debtorName,
+        amount: debtObj.amount,
+        method: repayMethod,
+        notes: repayNotes || 'تسديد دين سابق',
+        date: repayDate
+      });
+      setSettlingDebtId(null);
+      setRepayNotes('');
+      alert(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`);
+    } catch (error) {
+      alert('حدث خطأ أثناء تسديد الدين.');
+    }
+  };
+
   const handleImageUpload = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -563,6 +580,22 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
+  const handleSaveEditShop = async (e) => {
+    e.preventDefault();
+    if (!editingShop) return;
+    try {
+      await updateDoc(doc(db, "platformShops", String(editingShop.id)), {
+        name: editingShop.name,
+        workerEmail: editingShop.workerEmail,
+        workerPass: editingShop.workerPass,
+        phone: editingShop.phone,
+        address: editingShop.address
+      });
+      setEditingShop(null);
+      alert('تم تعديل بيانات الفرع بنجاح!');
+    } catch (e) { alert('خطأ أثناء الحفظ'); }
+  };
+
   // إضافة فرع جديد من قبل المالك مع 7 أيام تجريبية
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
@@ -618,6 +651,19 @@ export default function App() {
     try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); alert('تم الحذف بنجاح'); } catch (e) {}
   };
 
+  const handleStartEditTransaction = (t) => {
+    setEditingTxId(t.id);
+    setVehicleCategory(t.vehicleCategory || 'سيارة');
+    setCarModel(t.carModel || '');
+    setPlateNumber(t.plate);
+    setServiceType(t.service);
+    setPrice(t.price);
+    setPayMethod(t.method);
+    setTxNotes(t.notes || '');
+    setStartTime(t.startTime);
+    setEndTime(t.endTime);
+  };
+
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!plateNumber || !price || !currentUser) return alert('أدخل اللوحة والسعر!');
@@ -625,16 +671,24 @@ export default function App() {
     if (!shopId || shopId === 'all') return alert('اختر محلاً محدداً');
 
     try {
-      await addDoc(collection(db, "shops", String(shopId), "transactions"), {
-        vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
-      });
-      if (payMethod === 'دين') {
-        await addDoc(collection(db, "shops", String(shopId), "debts"), {
-          debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
+      if (editingTxId) {
+        await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes
         });
-        setDebtorName(''); setDebtorPhone('');
+        setEditingTxId(null);
+        alert('تم التحديث بنجاح');
+      } else {
+        await addDoc(collection(db, "shops", String(shopId), "transactions"), {
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
+        });
+        if (payMethod === 'دين') {
+          await addDoc(collection(db, "shops", String(shopId), "debts"), {
+            debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
+          });
+          setDebtorName(''); setDebtorPhone('');
+        }
+        alert('تم تسجيل الطلب بنجاح! 🚗✨');
       }
-      alert('تم تسجيل الطلب بنجاح! 🚗✨');
       setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); setBeforePhoto(null); setAfterPhoto(null);
     } catch (e) { alert('خطأ: ' + e.message); }
   };
@@ -693,7 +747,6 @@ export default function App() {
     const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
 
-    // حساب إجمالي الإيرادات بعد الخصومات المباشرة
     let totalSubscriptionRevenue = 0;
     clientsList.forEach(client => {
       const firstShop = client.shopsList[0] || {};
@@ -706,10 +759,7 @@ export default function App() {
       }
     });
 
-    // العملاء الذين لديهم خصومات مفعلة (> 0)
     const clientsWithDiscounts = clientsList.filter(c => c.discountPercent > 0);
-
-    // تصنيف العملاء حسب كمية الفروع
     const vipClients = clientsList.filter(c => c.shopsList.length >= 3);
     const regularClients = clientsList.filter(c => c.shopsList.length < 3);
 
@@ -727,7 +777,7 @@ export default function App() {
 
         <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold flex-wrap">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            👥 عملاء المنصة (أصحاب المحلات)
+            👥 عملاء المنصة (أصحاب المحلات وعدد فروعهم)
           </button>
           <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             ➕ إضافة عميل جديد
@@ -766,7 +816,6 @@ export default function App() {
           {/* تبويب 1: عرض قائمة العملاء وتصنيفهم حسب كمية الفروع */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="space-y-6">
-              {/* قسم عملاء VIP (متعدد الفروع) */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-purple-900 text-lg flex items-center gap-2">
                   <Award className="text-purple-600" size={22} /> كبار العملاء / VIP (3 فروع أو أكثر)
@@ -793,7 +842,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* قسم العملاء العاديين (فرع أو فرعين) */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                   <UsersRound className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
@@ -908,15 +956,14 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 4: نظام الخصومات المباشرة للعملاء وقائمة العملاء الذين لديهم خصومات */}
+          {/* تبويب 4: نظام الخصومات المباشرة وقائمة العملاء المستفيدين */}
           {programmerTab === 'directDiscounts' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
               <div className="border-b pb-4">
                 <h3 className="text-xl font-bold text-gray-900">🏷️ نظام الخصومات المباشرة على الاشتراكات</h3>
-                <p className="text-xs text-gray-500">اختر العميل وحدد نسبة الخصم المباشر (مثلاً خصم 50% على الاشتراك الشهري أو السنوي)</p>
+                <p className="text-xs text-gray-500">اختر العميل وحدد نسبة الخصم المباشر (مثلاً خصم 50%)</p>
               </div>
 
-              {/* نموذج تطبيق خصم مباشر */}
               <form onSubmit={handleApplyDirectDiscountToClient} className="bg-purple-50/60 p-5 rounded-2xl border border-purple-200 space-y-3">
                 <h4 className="font-bold text-sm text-purple-900">تطبيق خصم مباشر على عميل محدد:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -945,7 +992,6 @@ export default function App() {
                 </div>
               </form>
 
-              {/* قائمة العملاء الذين لديهم خصومات مفعلة حالياً */}
               <div className="space-y-3 pt-4">
                 <h4 className="font-bold text-gray-900 text-base">قائمة العملاء الذين لديهم خصومات مفعلة ({clientsWithDiscounts.length}):</h4>
                 {clientsWithDiscounts.length === 0 ? (
@@ -1089,7 +1135,7 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 5: كشف حسابات الاشتراكات المالية (تصميم جديد ومختلف بالكامل) */}
+          {/* تبويب 5: كشف حسابات الاشتراكات المالية */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
