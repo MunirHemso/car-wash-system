@@ -769,20 +769,88 @@ export default function App() {
     );
   }
 
+  // ================= واجهة المبرمج (المدير العام) الاحترافية والمحدثة =================
   if (currentUser.role === 'programmer') {
+    const activeCount = shops.filter(s => s.status === 'active').length;
+    const suspendedCount = shops.filter(s => s.status === 'suspended').length;
+
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
-          <div className="flex items-center gap-2"><Shield className="text-purple-400" size={24} /><span className="font-bold text-white">لوحة المبرمج (المدير العام)</span></div>
-          <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer"><LogOut size={14} /> خروج</button>
+          <div className="flex items-center gap-2">
+            <Shield className="text-purple-400" size={24} />
+            <span className="font-bold text-white text-lg">لوحة تحكم المدير العام (المبرمج)</span>
+          </div>
+          <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1">
+            <LogOut size={14} /> خروج
+          </button>
         </header>
-        <main className="max-w-6xl mx-auto p-6 space-y-4">
-          <h3 className="text-lg font-bold text-gray-900">جميع محلات المنصة</h3>
-          {shops.map(s => (
-            <div key={s.id} className="p-3 bg-white rounded-xl shadow-sm flex justify-between items-center text-sm">
-              <span className="text-gray-900 font-bold">{s.name} - مالك: {s.ownerEmail} | الحالة: {s.status}</span>
+
+        <main className="max-w-6xl mx-auto p-6 space-y-6">
+          {/* بطاقات الإحصائيات العامة للمنصة */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+              <span className="text-gray-500 text-sm">إجمالي المحلات في المنصة</span>
+              <h3 className="text-3xl font-black text-slate-900 mt-1">{shops.length}</h3>
             </div>
-          ))}
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100">
+              <span className="text-gray-500 text-sm">الفروع النشطة</span>
+              <h3 className="text-3xl font-black text-emerald-600 mt-1">{activeCount}</h3>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-red-100">
+              <span className="text-gray-500 text-sm">الفروع المعلقة / الموقوفة</span>
+              <h3 className="text-3xl font-black text-red-600 mt-1">{suspendedCount}</h3>
+            </div>
+          </div>
+
+          {/* قائمة إدارة المحلات والفروع */}
+          <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <Building className="text-purple-600" size={20} /> إدارة جميع محلات وفروع المنصة
+              </h3>
+            </div>
+
+            <div className="space-y-3">
+              {shops.length === 0 ? (
+                <p className="text-xs text-gray-400">لا توجد محلات مسجلة في المنصة حالياً.</p>
+              ) : (
+                shops.map(s => (
+                  <div key={s.id} className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${s.status === 'suspended' ? 'bg-red-50/50 border-red-200' : 'bg-gray-50'}`}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base text-gray-900">🏪 {s.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          {s.status === 'active' ? 'نشط' : 'معلق'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">👤 المالك: {s.owner} ({s.ownerEmail})</p>
+                      <p className="text-xs text-gray-600">👷‍♂️ العامل: {s.workerEmail} | كلمة السر: {s.workerPass}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">📍 {s.address} | هاتف: {s.phone}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {s.status === 'active' ? (
+                        <button 
+                          onClick={() => handleSuspendShop(s.id)} 
+                          className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 transition"
+                        >
+                          <AlertTriangle size={14} /> تعليق الفرع
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleActivateShop(s.id)} 
+                          className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 transition"
+                        >
+                          إعادة تفعيل
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </main>
       </div>
     );
@@ -1024,63 +1092,6 @@ export default function App() {
             </div>
           </div>
         </main>
-
-        {selectedInvoice && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full space-y-6 relative" dir="rtl">
-              <div className="space-y-4 text-right">
-                <div className="text-center border-b pb-3">
-                  <h2 className="text-xl font-black text-gray-900">🏪 {selectedInvoice.shopName}</h2>
-                  <p className="text-xs text-gray-600">{selectedInvoice.shopInfo?.address || 'إسكندرون'} | هاتف: {selectedInvoice.shopInfo?.phone || '+90...'}</p>
-                  <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">فاتورة غسيل مركبات رسمية</span>
-                </div>
-                <div className="space-y-2 text-sm text-gray-800 font-medium">
-                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">نوع المركبة:</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : 'موتور'})</span></div>
-                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">رقم اللوحة:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
-                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">الخدمة:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
-                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span></div>
-                  
-                  {selectedInvoice.notes && (
-                    <div className="flex justify-between border-b pb-1"><span className="text-gray-600">ملاحظات العامل:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
-                  )}
-
-                  {(selectedInvoice.beforePhoto || selectedInvoice.afterPhoto) && (
-                    <div className="py-2 border-b">
-                      <span className="text-xs text-gray-600 block mb-2 font-bold">توثيق الصور:</span>
-                      <div className="flex justify-around gap-2">
-                        {selectedInvoice.beforePhoto && (
-                          <div className="text-center w-1/2">
-                            <span className="text-[10px] text-gray-500 block">قبل الغسيل</span>
-                            <img src={selectedInvoice.beforePhoto} alt="قبل" className="w-full h-20 object-cover rounded-lg border mt-1" />
-                          </div>
-                        )}
-                        {selectedInvoice.afterPhoto && (
-                          <div className="text-center w-1/2">
-                            <span className="text-[10px] text-gray-500 block">بعد الغسيل</span>
-                            <img src={selectedInvoice.afterPhoto} alt="بعد" className="w-full h-20 object-cover rounded-lg border mt-1" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between text-base font-black bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                    <span className="text-emerald-900">المبلغ الإجمالي:</span><span className="text-emerald-700">{selectedInvoice.price} ليرة</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => handlePrintInvoice(selectedInvoice)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer text-sm shadow-md">
-                  <Printer size={18} /> طباعة الفاتورة / PDF
-                </button>
-                <button onClick={() => setSelectedInvoice(null)} className="px-5 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-bold cursor-pointer text-sm">
-                  إغلاق
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
