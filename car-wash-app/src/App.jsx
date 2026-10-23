@@ -64,7 +64,7 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // 🌟 حالات البحث والفلترة الجديدة (التواريخ وسجلات السيارات وبرقم اللوحة)
+  // 🌟 حالات البحث والفلترة (التواريخ وسجلات السيارات ورقم اللوحة)
   const [selectedDateFilter, setSelectedDateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
@@ -699,16 +699,25 @@ export default function App() {
     } catch (e) { showToast('خطأ: ' + e.message, 'error'); }
   };
 
+  // 🌟 دالة تسجيل المصروف المرتبطة بقاعدة البيانات وكشف الحسابات لجميع المحلات
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!expTitle || !expAmount || !selectedShopId) return showToast('أدخل بيانات المصروف', 'error');
+    const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
+    if (!expTitle || !expAmount || !shopId || shopId === 'all') return showToast('أدخل بيانات المصروف وافرز المحل بدقة', 'error');
+    
     try {
-      await addDoc(collection(db, "shops", String(selectedShopId), "expenses"), {
-        category: expCategory, title: expTitle, amount: Number(expAmount), notes: expNotes, time: new Date().toLocaleTimeString()
+      const todayDateStr = new Date().toISOString().slice(0, 10);
+      await addDoc(collection(db, "shops", String(shopId), "expenses"), {
+        category: expCategory, 
+        title: expTitle, 
+        amount: Number(expAmount), 
+        notes: expNotes, 
+        date: todayDateStr,
+        time: new Date().toLocaleTimeString()
       });
       setExpTitle(''); setExpAmount(''); setExpNotes('');
-      showToast('تم تسجيل المصروف بنجاح 📉', 'success');
-    } catch (e) { showToast('خطأ', 'error'); }
+      showToast('تم تسجيل المصروف بنجاح وخصمه من كشف الحساب والأرباح! 📉✅', 'success');
+    } catch (e) { showToast('حدث خطأ أثناء حفظ المصروف', 'error'); }
   };
 
   const renderToastComponent = () => {
@@ -1279,8 +1288,8 @@ export default function App() {
     const shopTx = transactions[shopId] || [];
     const shopDebts = debts[shopId] || [];
     const shopAnnouncementsList = announcements[shopId] || [];
+    const shopExpensesList = expenses[shopId] || [];
 
-    // تصفية المعاملات حسب التاريخ ورقم اللوحة
     const filteredWorkerTx = shopTx.filter(t => {
       const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
       const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
@@ -1318,125 +1327,141 @@ export default function App() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                <Car className="text-blue-600" /> {editingTxId ? 'تعديل معلومات المركبة ✏️' : 'تسجيل غسيل جديد'}
-              </h3>
-              <form onSubmit={handleAddTransaction} className="space-y-3">
-                <div className="space-y-1">
-                  <label className="block text-xs font-bold text-gray-700">نوع المركبة *</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setVehicleCategory('سيارة')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'سيارة' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
-                      <Car size={16} /> سيارة
-                    </button>
-                    <button type="button" onClick={() => setVehicleCategory('موتور')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'موتور' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
-                      <Bike size={16} /> موتور / دراجة
-                    </button>
-                  </div>
-                </div>
-
-                {vehicleCategory === 'سيارة' && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">اختر أو ابحث عن موديل السيارة *</label>
-                    <input 
-                      type="text" 
-                      list="carModelsLibrary" 
-                      placeholder="ابحث بالماركة أو الموديل..." 
-                      value={carModel} 
-                      onChange={e => setCarModel(e.target.value)} 
-                      className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900 font-semibold outline-none focus:ring-2 focus:ring-blue-500" 
-                      required 
-                    />
-                    <datalist id="carModelsLibrary">
-                      {comprehensiveCarLibrary.map((car, idx) => (
-                        <option key={idx} value={car} />
-                      ))}
-                    </datalist>
-                  </div>
-                )}
-
-                <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
-                
-                <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
-                  <option>غسيل خارجي فقط</option>
-                  <option>غسيل خارجي وداخلي</option>
-                  <option>غسيل كامل مع تلميع</option>
-                  <option>غسيل موتور</option>
-                </select>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)} placeholder="وقت البدء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
-                  <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)} placeholder="وقت الانتهاء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">السعر (تحديد يدوي) *</label>
-                  <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">ملاحظات (اختياري)</label>
-                  <input type="text" placeholder="ملاحظات حول حالة السيارة..." value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-xs font-bold text-gray-700">توثيق حالة المركبة بالصور</label>
-                  
-                  <div className="p-3 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2">
-                    <span className="text-[11px] font-bold text-blue-900 block">صورة قبل الغسيل: {beforePhoto ? '✓ تمت الإضافة' : ''}</span>
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <Car className="text-blue-600" /> {editingTxId ? 'تعديل معلومات المركبة ✏️' : 'تسجيل غسيل جديد'}
+                </h3>
+                <form onSubmit={handleAddTransaction} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-gray-700">نوع المركبة *</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                        <Camera size={16} /> فتح الكاميرا
-                        <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
-                      </label>
-                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                        <ImageIcon size={16} /> من الاستوديو
-                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
-                      </label>
+                      <button type="button" onClick={() => setVehicleCategory('سيارة')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'سيارة' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
+                        <Car size={16} /> سيارة
+                      </button>
+                      <button type="button" onClick={() => setVehicleCategory('موتور')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'موتور' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
+                        <Bike size={16} /> موتور / دراجة
+                      </button>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
-                    <span className="text-[11px] font-bold text-emerald-900 block">صورة بعد الغسيل: {afterPhoto ? '✓ تمت الإضافة' : ''}</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                        <Camera size={16} /> فتح الكاميرا
-                        <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
-                      </label>
-                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                        <ImageIcon size={16} /> من الاستوديو
-                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
-                      </label>
+                  {vehicleCategory === 'سيارة' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">اختر أو ابحث عن موديل السيارة *</label>
+                      <input 
+                        type="text" 
+                        list="carModelsLibrary" 
+                        placeholder="ابحث بالماركة أو الموديل..." 
+                        value={carModel} 
+                        onChange={e => setCarModel(e.target.value)} 
+                        className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900 font-semibold outline-none focus:ring-2 focus:ring-blue-500" 
+                        required 
+                      />
+                      <datalist id="carModelsLibrary">
+                        {comprehensiveCarLibrary.map((car, idx) => (
+                          <option key={idx} value={car} />
+                        ))}
+                      </datalist>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-gray-700">طريقة الدفع</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50 text-gray-800'}`}>كاش 💵</button>
-                    <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>بنك 💳</button>
-                    <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50 text-gray-800'}`}>دين ⚠️</button>
-                  </div>
-                </div>
-
-                {payMethod === 'دين' && (
-                  <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
-                    <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
-                    <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                    <input type="text" placeholder="رقم هاتف الزبون *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">
-                    {editingTxId ? 'تحديث المعلومات ✏️' : 'حفظ الطلب والتحديث 🚀'}
-                  </button>
-                  {editingTxId && (
-                    <button type="button" onClick={() => { setEditingTxId(null); setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); }} className="px-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs">إلغاء</button>
                   )}
-                </div>
-              </form>
+
+                  <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
+                  
+                  <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
+                    <option>غسيل خارجي فقط</option>
+                    <option>غسيل خارجي وداخلي</option>
+                    <option>غسيل كامل مع تلميع</option>
+                    <option>غسيل موتور</option>
+                  </select>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)} placeholder="وقت البدء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                    <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)} placeholder="وقت الانتهاء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">السعر (تحديد يدوي) *</label>
+                    <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">ملاحظات (اختياري)</label>
+                    <input type="text" placeholder="ملاحظات حول حالة السيارة..." value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-gray-700">توثيق حالة المركبة بالصور</label>
+                    
+                    <div className="p-3 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2">
+                      <span className="text-[11px] font-bold text-blue-900 block">صورة قبل الغسيل: {beforePhoto ? '✓ تمت الإضافة' : ''}</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                          <Camera size={16} /> فتح الكاميرا
+                          <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
+                        </label>
+                        <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                          <ImageIcon size={16} /> من الاستوديو
+                          <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
+                      <span className="text-[11px] font-bold text-emerald-900 block">صورة بعد الغسيل: {afterPhoto ? '✓ تمت الإضافة' : ''}</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                          <Camera size={16} /> فتح الكاميرا
+                          <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
+                        </label>
+                        <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                          <ImageIcon size={16} /> من الاستوديو
+                          <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-gray-700">طريقة الدفع</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50 text-gray-800'}`}>كاش 💵</button>
+                      <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>بنك 💳</button>
+                      <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50 text-gray-800'}`}>دين ⚠️</button>
+                    </div>
+                  </div>
+
+                  {payMethod === 'دين' && (
+                    <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
+                      <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
+                      <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                      <input type="text" placeholder="رقم هاتف الزبون *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">
+                      {editingTxId ? 'تحديث المعلومات ✏️' : 'حفظ الطلب والتحديث 🚀'}
+                    </button>
+                    {editingTxId && (
+                      <button type="button" onClick={() => { setEditingTxId(null); setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); }} className="px-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs">إلغاء</button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* 🌟 قائمة تسجيل المصروفات المضافة لشاشة العامل */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> تسجيل مصروف لـ {currentUser.shopName}</h3>
+                <form onSubmit={handleAddExpense} className="space-y-3">
+                  <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
+                    <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
+                  </select>
+                  <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
+                  <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
+                </form>
+              </div>
             </div>
 
             <div className="lg:col-span-2 space-y-6">
@@ -1481,7 +1506,7 @@ export default function App() {
                 )}
               </div>
 
-              {/* 🌟 قسم سجلات المركبات اليومية / السجلات القديمة مع خيار البحث برقم اللوحة */}
+              {/* 🌟 سجلات المركبات اليومية / السجلات القديمة مع خيار البحث برقم اللوحة */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                   <h3 className="font-bold text-gray-800">
@@ -1490,7 +1515,6 @@ export default function App() {
                   </h3>
                   
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* حقل البحث برقم اللوحة */}
                     <input 
                       type="text" 
                       placeholder="بحث برقم اللوحة 🔍" 
@@ -1499,7 +1523,6 @@ export default function App() {
                       className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     
-                    {/* اختيار تاريخ مخصص (للتواريخ القديمة وسجلات البيانات) */}
                     <input 
                       type="date" 
                       value={selectedDateFilter} 
@@ -1625,7 +1648,6 @@ export default function App() {
   const shopRepayList = debtRepayments[selectedShopId] || [];
   const shopAnnouncementsList = announcements[selectedShopId] || [];
 
-  // تصفية المعاملات في لوحة المالك حسب التاريخ ورقم اللوحة
   const filteredOwnerTx = currentShopTx.filter(t => {
     const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
     const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
@@ -1837,7 +1859,6 @@ export default function App() {
                   </form>
                 </div>
 
-                {/* 🌟 حركة المركبات وسجلات البيانات اليومية والقديمة للفرع في لوحة المالك */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                   <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                     <h3 className="font-bold text-gray-900">
@@ -1846,7 +1867,6 @@ export default function App() {
                     </h3>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* حقل البحث برقم اللوحة */}
                       <input 
                         type="text" 
                         placeholder="بحث برقم اللوحة 🔍" 
@@ -1855,7 +1875,6 @@ export default function App() {
                         className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
                       />
 
-                      {/* اختيار تاريخ مخصص للسجلات القديمة */}
                       <input 
                         type="date" 
                         value={selectedDateFilter} 
