@@ -58,7 +58,6 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
     const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
       if (!snapshot.empty) {
@@ -1445,7 +1444,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 لوحة صاحب المحل (المالك - الأصلية 100%) =================
+  // ================= لوحة صاحب المحل (المالك - الأصلية 100%) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
