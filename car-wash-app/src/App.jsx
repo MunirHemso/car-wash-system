@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
   Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
-  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet 
+  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet, LogOut, UsersRound 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -28,6 +28,20 @@ export default function App() {
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
+
+  // تسجيل الخروج بشكل آمن وإظهار صفحة تسجيل الدخول
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.warn('Firebase sign-out notice:', error);
+    } finally {
+      localStorage.removeItem('carWash_currentUser');
+      setCurrentUser(null);
+      setInputEmail('');
+      setInputPassword('');
+    }
+  };
 
   const [shops, setShops] = useState([
     { 
