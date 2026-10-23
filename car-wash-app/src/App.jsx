@@ -50,6 +50,15 @@ export default function App() {
       if (!snapshot.empty) {
         const fetchedShops = snapshot.docs.map(doc => ({ id: Number(doc.id), ...doc.data() }));
         setShops(fetchedShops);
+        
+        // إذا كان المستخدم مسجلاً حالياً كمالك، نقوم بتحديث فروع لديه تلقائياً
+        if (currentUser && currentUser.role === 'owner') {
+          const updatedOwnedShops = fetchedShops.filter(s => s.ownerEmail.toLowerCase() === currentUser.email.toLowerCase());
+          setCurrentUser(prev => ({
+            ...prev,
+            ownedShops: updatedOwnedShops
+          }));
+        }
       } else {
         shops.forEach(async (s) => {
           await setDoc(doc(db, "platformShops", String(s.id)), s);
@@ -176,7 +185,7 @@ export default function App() {
     }, 600);
   };
 
-  // تسجيل الدخول (يدعم المبرمج، المالك، والعامل عبر المطابقة مع قاعدة البيانات مباشرة)
+  // تسجيل الدخول (يدعم المبرمج، المالك، والعامل عبر المطابقة الفورية مع الـ Firestore)
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
@@ -393,7 +402,7 @@ export default function App() {
     } catch (e) { alert('خطأ أثناء الحفظ'); }
   };
 
-  // 🚀 الحل المباشر الآمن: حفظ الفرع مباشرة في Firestore من الواجهة الأمامية بدون سيرفر وبدون Blaze
+  // 🚀 الحل الجذري والسريع: حفظ الفرع مباشرة في Firestore مع ربطه الكامل بالمالك الحالي
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -416,6 +425,13 @@ export default function App() {
 
       await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
 
+      // تحديث حالة currentUser فوراً محلياً لضمان ظهور الفرع فوراً في القائمة
+      const updatedShopsList = [...(currentUser.ownedShops || []), shopObj];
+      setCurrentUser(prev => ({
+        ...prev,
+        ownedShops: updatedShopsList
+      }));
+
       setNewShopName('');
       setNewWorkerEmail('');
       setNewWorkerPass('');
@@ -423,7 +439,7 @@ export default function App() {
       setNewShopAddress('');
       setSelectedShopId(shopId);
       
-      alert('تم إضافة الفرع وحفظه سحابياً بنجاح تام! 🏪✨ العامل يستطيع تسجيل الدخول فوراً ببريده وكلمة المرور.');
+      alert('تم إضافة الفرع وحفظه سحابياً بنجاح تام! 🏪✨ العامل يستطيع تسجيل الدخول فوراً.');
       setActiveTab('dashboard');
     } catch (error) {
       alert('حدث خطأ أثناء الحفظ: ' + error.message);
