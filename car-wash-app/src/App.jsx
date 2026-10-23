@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
+  Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
+  Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
+  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -48,7 +49,6 @@ export default function App() {
     }
   ]);
 
-  // خطط الأسعار للباقات
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
@@ -154,7 +154,6 @@ export default function App() {
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
-  // حقول إضافة عميل جديد
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -164,7 +163,6 @@ export default function App() {
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
-  // حقول تعديل العميل
   const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
@@ -581,13 +579,6 @@ export default function App() {
     printWindow.document.close();
   };
 
-  const handleLogout = async () => {
-    try { await signOut(auth); } catch (e) {}
-    localStorage.removeItem('carWash_currentUser');
-    setCurrentUser(null);
-    setSelectedInvoice(null);
-  };
-
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -666,7 +657,7 @@ export default function App() {
     try {
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
         alert('تم التحديث بنجاح ✏️');
@@ -717,7 +708,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (مع كافة التعديلات التجارية الجديدة) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin مع التعديلات المطلوبة) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -736,25 +727,28 @@ export default function App() {
     });
 
     const clientsList = Object.values(clientsMap);
+
+    // تصفية وعزل الحسابات النشطة عن الحسابات المعلقة/الملغاة
+    const activeClientsList = clientsList.filter(client => client.shopsList.some(s => s.status === 'active'));
+    const suspendedClientsList = clientsList.filter(client => client.shopsList.every(s => s.status === 'suspended'));
+
     const activeShopsCount = shops.filter(s => s.status === 'active').length;
     const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
 
     let totalSubscriptionRevenue = 0;
-    clientsList.forEach(client => {
+    activeClientsList.forEach(client => {
       const firstShop = client.shopsList[0] || {};
       const basePrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
       const discount = client.discountPercent || 0;
       const discountedPrice = basePrice * (1 - discount / 100);
 
-      if (client.shopsList.some(s => s.status === 'active')) {
-        totalSubscriptionRevenue += discountedPrice * client.shopsList.length;
-      }
+      totalSubscriptionRevenue += discountedPrice * client.shopsList.filter(s => s.status === 'active').length;
     });
 
     const clientsWithDiscounts = clientsList.filter(c => c.discountPercent > 0);
-    const vipClients = clientsList.filter(c => c.shopsList.length >= 3);
-    const regularClients = clientsList.filter(c => c.shopsList.length < 3);
+    const vipClients = activeClientsList.filter(c => c.shopsList.length >= 3);
+    const regularClients = activeClientsList.filter(c => c.shopsList.length < 3);
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
@@ -770,7 +764,10 @@ export default function App() {
 
         <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold flex-wrap">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            👥 عملاء المنصة (أصحاب المحلات وعدد فروعهم)
+            👥 العملاء النشطون
+          </button>
+          <button onClick={() => { setProgrammerTab('suspendedClients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'suspendedClients' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+            ⏳ الحسابات المعلقة والمؤرشفة ({suspendedClientsList.length})
           </button>
           <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             ➕ إضافة عميل جديد
@@ -779,7 +776,7 @@ export default function App() {
             💰 باقات الأسعار
           </button>
           <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'directDiscounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            🏷️ نظام الخصومات المباشرة (نسب مئوية)
+            🏷️ نظام الخصومات المباشرة
           </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             📑 كشف حسابات الاشتراكات المالية
@@ -789,8 +786,8 @@ export default function App() {
         <main className="max-w-7xl mx-auto p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-              <span className="text-gray-500 text-sm">إجمالي العملاء</span>
-              <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length}</h3>
+              <span className="text-gray-500 text-sm">العملاء النشطون</span>
+              <h3 className="text-3xl font-black text-slate-900 mt-1">{activeClientsList.length}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100">
               <span className="text-gray-500 text-sm">إجمالي الفروع</span>
@@ -806,14 +803,15 @@ export default function App() {
             </div>
           </div>
 
+          {/* تبويب 1: العملاء النشطون (مع إخفاء الإيميل) */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-purple-900 text-lg flex items-center gap-2">
-                  <Award className="text-purple-600" size={22} /> كبار العملاء / VIP (3 فروع أو أكثر)
+                  <Award className="text-purple-600" size={22} /> كبار العملاء / VIP النشطون (3 فروع أو أكثر)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vipClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء VIP حالياً.</p> : vipClients.map((client, idx) => (
+                  {vipClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء VIP نشطون حالياً.</p> : vipClients.map((client, idx) => (
                     <div key={idx} className="p-5 rounded-2xl border-2 border-purple-200 bg-purple-50/20 flex flex-col justify-between space-y-4">
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
@@ -822,7 +820,6 @@ export default function App() {
                             🏢 {client.shopsList.length} فروع
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📧 الإيميل: {client.ownerEmail}</p>
                         <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
                         {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
                       </div>
@@ -836,7 +833,7 @@ export default function App() {
 
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  <UsersRound className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
+                  <Users className="text-blue-600" size={22} /> العملاء العاديون النشطون (1 إلى 2 فرع)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {regularClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء.</p> : regularClients.map((client, idx) => (
@@ -848,7 +845,6 @@ export default function App() {
                             🏢 {client.shopsList.length} فرع
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📧 الإيميل: {client.ownerEmail}</p>
                         <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
                         {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
                       </div>
@@ -858,6 +854,38 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* تبويب الحسابات المعلقة والمؤرشفة (معزولة تماماً) */}
+          {programmerTab === 'suspendedClients' && (
+            <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
+              <h3 className="font-bold text-amber-900 text-lg flex items-center gap-2">
+                ⏳ الحسابات المعلقة والمؤرشفة (بانتظار إعادة التفعيل أو انتهاء مهلة 3 أشهر)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {suspendedClientsList.length === 0 ? (
+                  <p className="text-xs text-gray-400">لا توجد حسابات معلقة حالياً.</p>
+                ) : (
+                  suspendedClientsList.map((client, idx) => (
+                    <div key={idx} className="p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/20 flex flex-col justify-between space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
+                          <span className="px-3 py-1 bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs">
+                            معلق / مؤرشف
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
+                        <p className="text-xs text-red-600 font-semibold mt-1">عدد الفروع المعلقة: {client.shopsList.length}</p>
+                      </div>
+                      <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
+                        إدارة الحساب وتفعيله 🔍
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -963,7 +991,7 @@ export default function App() {
                     required
                   >
                     <option value="">-- اختر العميل (صاحب المحل) --</option>
-                    {clientsList.map((c, i) => <option key={i} value={c.ownerEmail}>{c.ownerName} ({c.ownerEmail})</option>)}
+                    {activeClientsList.map((c, i) => <option key={i} value={c.ownerEmail}>{c.ownerName}</option>)}
                   </select>
                   <input 
                     type="number" 
@@ -989,7 +1017,7 @@ export default function App() {
                   clientsWithDiscounts.map((client, idx) => (
                     <div key={idx} className="p-4 rounded-xl border bg-emerald-50/50 border-emerald-200 flex justify-between items-center text-sm">
                       <div>
-                        <span className="font-bold text-slate-900">👤 {client.ownerName} ({client.ownerEmail})</span>
+                        <span className="font-bold text-slate-900">👤 {client.ownerName}</span>
                         <p className="text-xs text-emerald-700 font-bold mt-0.5">نسبة الخصم المفعلة: {client.discountPercent}% على جميع فروعه</p>
                       </div>
                       <button 
@@ -1023,7 +1051,7 @@ export default function App() {
                     onClick={() => setEditingClientData({ ownerName: selectedClient.ownerName, ownerEmail: selectedClient.ownerEmail, taxNumber: selectedClient.taxNumber, phone: selectedClient.phone })}
                     className="bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    تعديل البيانات / إيميل الدخول ✏️
+                    تعديل البيانات ✏️
                   </button>
                   <button 
                     onClick={() => handleSuspendClientForMonths(selectedClient.ownerEmail)}
@@ -1055,11 +1083,7 @@ export default function App() {
                 </form>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
-                <div>
-                  <span className="text-xs text-gray-500 block">البريد الإلكتروني الرئيسي</span>
-                  <strong className="text-sm text-slate-900">{selectedClient.ownerEmail}</strong>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                 <div>
                   <span className="text-xs text-gray-500 block">رقم الهاتف</span>
                   <strong className="text-sm text-slate-900">{selectedClient.phone}</strong>
@@ -1100,7 +1124,6 @@ export default function App() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: {shop.phone}</p>
-                      <p className="text-xs text-gray-600">👷‍♂️ إيميل العامل: {shop.workerEmail} (باسورد: {shop.workerPass})</p>
                       <div className="mt-1 text-xs font-bold text-blue-600">
                         الاشتراك: {shop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : shop.subscriptionType} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
                       </div>
@@ -1136,16 +1159,16 @@ export default function App() {
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء</span>
-                    <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length} عميل</h3>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء النشطين</span>
+                    <h3 className="text-3xl font-black text-slate-900 mt-1">{activeClientsList.length} عميل</h3>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي الفروع بالمنصة</span>
-                    <h3 className="text-3xl font-black text-blue-600 mt-1">{shops.length} فرع</h3>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي الفروع النشطة</span>
+                    <h3 className="text-3xl font-black text-blue-600 mt-1">{activeShopsCount} فرع</h3>
                   </div>
                   <div className="bg-blue-50 p-4 rounded-2xl"><Building size={28} className="text-blue-600" /></div>
                 </div>
@@ -1154,7 +1177,7 @@ export default function App() {
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف الحسابات المالي للاشتراكات (حسب العملاء والخصومات)
+                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف الحسابات المالي للاشتراكات النشطة
                   </h3>
                   <button 
                     onClick={handleRefreshData} 
@@ -1171,7 +1194,7 @@ export default function App() {
                     <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                       <tr>
                         <th className="p-3">صاحب المحل (العميل)</th>
-                        <th className="p-3">عدد الفروع</th>
+                        <th className="p-3">عدد الفروع النشطة</th>
                         <th className="p-3">نوع الباقة</th>
                         <th className="p-3">نسبة الخصم المباشر</th>
                         <th className="p-3">الإيراد الصافي (بعد الخصم)</th>
@@ -1180,24 +1203,24 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {clientsList.map((client, idx) => {
-                        const firstShop = client.shopsList[0] || {};
-                        const hasActiveShop = client.shopsList.some(s => s.status === 'active');
+                      {activeClientsList.map((client, idx) => {
+                        const firstShop = client.shopsList.find(s => s.status === 'active') || client.shopsList[0] || {};
+                        const activeShopsForClient = client.shopsList.filter(s => s.status === 'active').length;
                         const basePrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
                         const disc = client.discountPercent || 0;
-                        const finalPrice = (basePrice * (1 - disc / 100)) * client.shopsList.length;
+                        const finalPrice = (basePrice * (1 - disc / 100)) * activeShopsForClient;
 
                         return (
                           <tr key={idx} className="hover:bg-gray-50">
-                            <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
-                            <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
+                            <td className="p-3 font-bold text-slate-900">👤 {client.ownerName}</td>
+                            <td className="p-3 font-bold text-purple-700">🏢 {activeShopsForClient} فروع</td>
                             <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي' : firstShop.subscriptionType}</td>
                             <td className="p-3 font-bold text-emerald-600">{disc > 0 ? `${disc}% خصم` : 'بدون خصم'}</td>
                             <td className="p-3 font-black text-purple-700">{finalPrice} ليرة</td>
                             <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
                             <td className="p-3">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                {hasActiveShop ? 'نشط' : 'معلق / منتهي'}
+                              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                                نشط
                               </span>
                             </td>
                           </tr>
@@ -1214,7 +1237,7 @@ export default function App() {
     );
   }
 
-  // ================= شاشة العامل (النسخة القديمة الأصلية 100%) =================
+  // ================= شاشة العامل (الأصلية 100%) =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1224,7 +1247,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
-          <div><h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1><span className="text-xs text-cyan-300 font-medium">شاشة العامل</span></div>
+          <div>
+            <h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1>
+            <span className="text-xs text-cyan-300 font-medium">شاشة العامل</span>
+          </div>
           <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer">خروج</button>
         </header>
 
