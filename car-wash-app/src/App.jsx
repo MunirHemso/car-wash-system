@@ -44,22 +44,6 @@ export default function App() {
       subscriptionType: 'monthly',
       subscriptionExpiry: '2026-12-31',
       suspendedAt: null
-    },
-    { 
-      id: 2, 
-      name: 'مغسلة النسر - فرع الميناء', 
-      owner: 'أحمد محمد', 
-      ownerEmail: 'ahmed@gmail.com',
-      taxNumber: '1234567890',
-      workerEmail: 'worker2@gmail.com',
-      workerPass: '123456',
-      phone: '+90 531 234 5679', 
-      address: 'إسكندرون، المنطقة الحرة', 
-      code: 'NESR-2', 
-      status: 'active',
-      subscriptionType: 'monthly',
-      subscriptionExpiry: '2026-12-31',
-      suspendedAt: null
     }
   ]);
 
@@ -157,8 +141,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // حالات خاصة بلوحة المبرمج
-  const [programmerTab, setProgrammerTab] = useState('clients'); // 'clients' or 'subscriptionsReport'
-  const [selectedClientEmail, setSelectedClientEmail] = useState(null); // لعرض ملف العميل المفصل
+  const [programmerTab, setProgrammerTab] = useState('clients'); 
+  const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
@@ -279,7 +263,6 @@ export default function App() {
     }
   };
 
-  // 🚀 تفعيل الاشتراك للعميل (أو لجميع فروعه دفعة واحدة)
   const handleUpdateClientSubscription = async (clientEmail, planType) => {
     let expiryDate = '';
     const now = new Date();
@@ -460,22 +443,6 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
-  const handleSaveEditShop = async (e) => {
-    e.preventDefault();
-    if (!editingShop) return;
-    try {
-      await updateDoc(doc(db, "platformShops", String(editingShop.id)), {
-        name: editingShop.name,
-        workerEmail: editingShop.workerEmail,
-        workerPass: editingShop.workerPass,
-        phone: editingShop.phone,
-        address: editingShop.address
-      });
-      setEditingShop(null);
-      alert('تم تعديل بيانات الفرع بنجاح!');
-    } catch (e) { alert('خطأ أثناء الحفظ'); }
-  };
-
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -529,19 +496,6 @@ export default function App() {
     try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); alert('تم الحذف بنجاح'); } catch (e) {}
   };
 
-  const handleStartEditTransaction = (t) => {
-    setEditingTxId(t.id);
-    setVehicleCategory(t.vehicleCategory || 'سيارة');
-    setCarModel(t.carModel || '');
-    setPlateNumber(t.plate);
-    setServiceType(t.service);
-    setPrice(t.price);
-    setPayMethod(t.method);
-    setTxNotes(t.notes || '');
-    setStartTime(t.startTime);
-    setEndTime(t.endTime);
-  };
-
   const handleAddTransaction = async (e) => {
     e.preventDefault();
     if (!plateNumber || !price || !currentUser) return alert('أدخل اللوحة والسعر!');
@@ -549,24 +503,16 @@ export default function App() {
     if (!shopId || shopId === 'all') return alert('اختر محلاً محدداً');
 
     try {
-      if (editingTxId) {
-        await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes
+      await addDoc(collection(db, "shops", String(shopId), "transactions"), {
+        vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
+      });
+      if (payMethod === 'دين') {
+        await addDoc(collection(db, "shops", String(shopId), "debts"), {
+          debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
         });
-        setEditingTxId(null);
-        alert('تم التحديث بنجاح');
-      } else {
-        await addDoc(collection(db, "shops", String(shopId), "transactions"), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
-        });
-        if (payMethod === 'دين') {
-          await addDoc(collection(db, "shops", String(shopId), "debts"), {
-            debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
-          });
-          setDebtorName(''); setDebtorPhone('');
-        }
-        alert('تم تسجيل الطلب بنجاح! 🚗✨');
+        setDebtorName(''); setDebtorPhone('');
       }
+      alert('تم تسجيل الطلب بنجاح! 🚗✨');
       setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); setBeforePhoto(null); setAfterPhoto(null);
     } catch (e) { alert('خطأ: ' + e.message); }
   };
@@ -604,7 +550,6 @@ export default function App() {
 
   // ================= 🌟 واجهة المبرمج الاحترافية (تجميع العملاء وإدارة الاشتراكات والملفات الضريبية) =================
   if (currentUser.role === 'programmer') {
-    // تجميع الفروع حسب عميل (Owner) بناءً على ownerEmail
     const clientsMap = {};
     shops.forEach(s => {
       const email = s.ownerEmail ? s.ownerEmail.toLowerCase() : 'unknown@domain.com';
@@ -623,8 +568,6 @@ export default function App() {
     const clientsList = Object.values(clientsMap);
     const activeShopsCount = shops.filter(s => s.status === 'active').length;
     const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
-
-    // العميل المحدد لعرض ملفه الضريبي والشخصي المفصل
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
 
     return (
@@ -639,7 +582,6 @@ export default function App() {
           </button>
         </header>
 
-        {/* شريط التنقل في لوحة المبرمج */}
         <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             👥 عملاء المنصة (أصحاب المحلات)
@@ -650,7 +592,6 @@ export default function App() {
         </nav>
 
         <main className="max-w-7xl mx-auto p-6 space-y-6">
-          {/* إحصائيات عامة علوية */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
               <span className="text-gray-500 text-sm">إجمالي العملاء (أصحاب المحلات)</span>
@@ -670,7 +611,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* تبويب 1: عرض قائمة العملاء أو الملف التفصيلي للعميل عند النقر عليه */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -710,7 +650,6 @@ export default function App() {
             </div>
           )}
 
-          {/* الملف الشخصي والضريبي التفصيلي للعميل المحدد */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
@@ -726,7 +665,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* معلومات العميل الأساسية والضريبية */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                 <div>
                   <span className="text-xs text-gray-500 block">البريد الإلكتروني الرئيسي</span>
@@ -742,7 +680,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* أزرار تجديد الاشتراكات الجماعية لهذا العميل */}
               <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap justify-between items-center gap-4">
                 <div>
                   <h4 className="font-bold text-sm">تجديد اشتراكات جميع فروع هذا العميل دفعة واحدة:</h4>
@@ -761,7 +698,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* قائمة فروع هذا العميل بالتفصيل */}
               <div className="space-y-3">
                 <h4 className="font-bold text-gray-900 text-base">فروع المغاسل التابعة لهذا العميل ({selectedClient.shopsList.length}):</h4>
                 {selectedClient.shopsList.map(shop => (
@@ -797,7 +733,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 2: كشف حسابات الاشتراكات العامة */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
