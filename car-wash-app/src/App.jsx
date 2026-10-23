@@ -64,11 +64,9 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // 🌟 حالات البحث والفلترة (التواريخ وسجلات السيارات ورقم اللوحة)
   const [selectedDateFilter, setSelectedDateFilter] = useState(new Date().toISOString().slice(0, 10));
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
-  // 🌟 نظام التنبيهات الموحد
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = 'success') => {
@@ -184,13 +182,14 @@ export default function App() {
 
   const [editingClientData, setEditingClientData] = useState(null);
 
+  // 🌟 حالات إضافة وتعديل الفروع الخاصة بالمالك
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
   const [newWorkerPass, setNewWorkerPass] = useState('');
   const [newShopPhone, setNewShopPhone] = useState('');
   const [newShopAddress, setNewShopAddress] = useState('');
   const [ownerTaxNumber, setOwnerTaxNumber] = useState('');
-  const [editingShop, setEditingShop] = useState(null);
+  const [editingShopId, setEditingShopId] = useState(null);
 
   const [ownerNoticeTitle, setOwnerNoticeTitle] = useState('');
   const [ownerNoticeText, setOwnerNoticeText] = useState('');
@@ -600,17 +599,20 @@ export default function App() {
     printWindow.document.close();
   };
 
-  const handleOwnerAddShop = async (e) => {
+  // 🌟 وظيفة إضافة أو تحديث الفرع للمالك مع دعم الحذف والتعديل المباشر
+  const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
-    if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل', 'error');
+    if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
     try {
-      const shopId = Date.now();
+      const shopId = editingShopId ? editingShopId : Date.now();
       const trialExpiry = new Date();
       trialExpiry.setDate(trialExpiry.getDate() + 7);
 
+      const existingShop = shops.find(s => s.id === Number(shopId)) || {};
+
       const shopObj = {
-        id: shopId,
+        id: Number(shopId),
         name: newShopName,
         owner: currentUser.ownerName,
         ownerEmail: currentUser.email,
@@ -619,17 +621,20 @@ export default function App() {
         workerPass: newWorkerPass,
         phone: newShopPhone || '+90 ...',
         address: newShopAddress || 'العنوان لم يحدد',
-        code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
-        status: 'active',
-        subscriptionType: 'trial',
-        subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
-        discountPercent: 0,
-        suspendedAt: null
+        code: existingShop.code || ('SHOP-' + Math.floor(100 + Math.random() * 900)),
+        status: existingShop.status || 'active',
+        subscriptionType: existingShop.subscriptionType || 'trial',
+        subscriptionExpiry: existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10),
+        discountPercent: existingShop.discountPercent || 0,
+        suspendedAt: existingShop.suspendedAt || null
       };
 
       await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
 
-      const updatedOwnedShops = [...(currentUser.ownedShops || []), shopObj];
+      const updatedOwnedShops = editingShopId 
+        ? (currentUser.ownedShops || []).map(s => s.id === Number(shopId) ? shopObj : s)
+        : [...(currentUser.ownedShops || []), shopObj];
+
       setCurrentUser(prev => ({
         ...prev,
         ownedShops: updatedOwnedShops
@@ -640,12 +645,39 @@ export default function App() {
       setNewWorkerPass('');
       setNewShopPhone('');
       setNewShopAddress('');
+      setEditingShopId(null);
       setSelectedShopId(shopId);
       
-      showToast('تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨', 'success');
-      setActiveTab('dashboard');
+      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨', 'success');
     } catch (error) {
       showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
+    }
+  };
+
+  const handleStartEditShop = (shop) => {
+    setEditingShopId(shop.id);
+    setNewShopName(shop.name);
+    setNewWorkerEmail(shop.workerEmail || '');
+    setNewWorkerPass(shop.workerPass || '');
+    setNewShopPhone(shop.phone || '');
+    setNewShopAddress(shop.address || '');
+  };
+
+  const handleDeleteShopByOwner = async (shopId) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الفرع نهائياً من مجموعتك؟')) return;
+    try {
+      await deleteDoc(doc(db, "platformShops", String(shopId)));
+      const updatedOwnedShops = (currentUser.ownedShops || []).filter(s => s.id !== Number(shopId));
+      setCurrentUser(prev => ({
+        ...prev,
+        ownedShops: updatedOwnedShops
+      }));
+      if (selectedShopId === Number(shopId)) {
+        setSelectedShopId(updatedOwnedShops[0]?.id || 'all');
+      }
+      showToast('تم حذف الفرع بنجاح 🗑️', 'success');
+    } catch (e) {
+      showToast('حدث خطأ أثناء حذف الفرع', 'error');
     }
   };
 
@@ -699,7 +731,6 @@ export default function App() {
     } catch (e) { showToast('خطأ: ' + e.message, 'error'); }
   };
 
-  // 🌟 دالة تسجيل المصروف المرتبطة بقاعدة البيانات وكشف الحسابات لجميع المحلات
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
@@ -1288,7 +1319,6 @@ export default function App() {
     const shopTx = transactions[shopId] || [];
     const shopDebts = debts[shopId] || [];
     const shopAnnouncementsList = announcements[shopId] || [];
-    const shopExpensesList = expenses[shopId] || [];
 
     const filteredWorkerTx = shopTx.filter(t => {
       const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
@@ -1506,7 +1536,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* 🌟 سجلات المركبات اليومية / السجلات القديمة مع خيار البحث برقم اللوحة */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                   <h3 className="font-bold text-gray-800">
@@ -1701,7 +1730,7 @@ export default function App() {
 
       <nav className="bg-white border-b px-6 py-3 flex gap-4 text-sm font-bold">
         <button onClick={() => setActiveTab('dashboard')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'dashboard' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>📊 نظرة عامة والجرد</button>
-        <button onClick={() => setActiveTab('addShop')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'addShop' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>➕ إضافة فرع جديد لفروعي</button>
+        <button onClick={() => setActiveTab('addShop')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'addShop' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>➕ إدارة وإضافة الفروع</button>
         {!isAllShops && <button onClick={() => setActiveTab('accounting')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'accounting' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>📑 كشف الحسابات والديون والأرباح</button>}
         <button onClick={() => setActiveTab('profile')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>⚙️ الملف الشخصي والضريبي</button>
       </nav>
@@ -1935,46 +1964,157 @@ export default function App() {
           </div>
         )}
 
+        {/* ================= 🌟 واجهة إدارة وإضافة الفروع المطورة باحترافية (إضافة، تعديل، حذف) ================= */}
         {activeTab === 'addShop' && (
-          <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
-              <div className="flex items-center gap-3 border-b pb-4">
-                <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><Building size={24} /></div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">إضافة فرع جديد لمجموعتك</h3>
-                  <p className="text-xs text-gray-500">سيحصل الفرع الجديد على فترة تجريبية مجانية 7 أيام تلقائياً</p>
+          <div className="space-y-8 max-w-4xl mx-auto py-2">
+            
+            {/* نموذج إضافة أو تعديل فرع بتصميم احترافي */}
+            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+              
+              <div className="flex items-center justify-between border-b pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-purple-100 text-purple-600 p-3.5 rounded-2xl">
+                    <Building size={26} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">
+                      {editingShopId ? 'تعديل بيانات فرع المغسلة ✏️' : 'إضافة فرع جديد لمجموعتك 🏪'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {editingShopId ? 'قم بتحديث معلومات الفرع وعامل الفرع أدناه' : 'سيحصل الفرع الجديد على فترة تجريبية مجانية 7 أيام تلقائياً'}
+                    </p>
+                  </div>
                 </div>
+                {editingShopId && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setEditingShopId(null); setNewShopName(''); setNewWorkerEmail(''); setNewWorkerPass(''); setNewShopPhone(''); setNewShopAddress(''); }}
+                    className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold transition"
+                  >
+                    إلغاء التعديل ✕
+                  </button>
+                )}
               </div>
 
-              <form onSubmit={handleOwnerAddShop} className="space-y-4">
-                <input type="text" placeholder="اسم الفرع الجديد (مثال: مغسلة النسر - الفرع الجديد) *" value={newShopName} onChange={e => setNewShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900" required />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input type="email" placeholder="إيميل العامل لهذا الفرع (Gmail) *" value={newWorkerEmail} onChange={e => setNewWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900" required />
-                  <input type="password" placeholder="كلمة سر العامل *" value={newWorkerPass} onChange={e => setNewWorkerPass(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900" required />
+              <form onSubmit={handleOwnerSaveShop} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">اسم الفرع الجديد / المغسلة *</label>
+                  <input 
+                    type="text" 
+                    placeholder="مثال: مغسلة النسر - فرع الميناء" 
+                    value={newShopName} 
+                    onChange={e => setNewShopName(e.target.value)} 
+                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                    required 
+                  />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input type="text" placeholder="رقم هاتف الفرع" value={newShopPhone} onChange={e => setNewShopPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900" />
-                  <input type="text" placeholder="عنوان الفرع (المنطقة والشارع)" value={newShopAddress} onChange={e => setNewShopAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">البريد الإلكتروني لعامل الفرع (Gmail) *</label>
+                    <input 
+                      type="email" 
+                      placeholder="worker@gmail.com" 
+                      value={newWorkerEmail} 
+                      onChange={e => setNewWorkerEmail(e.target.value)} 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">كلمة سر دخول عامل الفرع *</label>
+                    <input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      value={newWorkerPass} 
+                      onChange={e => setNewWorkerPass(e.target.value)} 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                      required 
+                    />
+                  </div>
                 </div>
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold text-sm cursor-pointer shadow-md">إضافة الفرع الجديد لفروعي 🚀</button>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">رقم هاتف الفرع</label>
+                    <input 
+                      type="text" 
+                      placeholder="+90 531 000 0000" 
+                      value={newShopPhone} 
+                      onChange={e => setNewShopPhone(e.target.value)} 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">عنوان الفرع (المنطقة والشارع)</label>
+                    <input 
+                      type="text" 
+                      placeholder="إسكندرون، شارع العصري..." 
+                      value={newShopAddress} 
+                      onChange={e => setNewShopAddress(e.target.value)} 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 rounded-2xl font-bold text-sm cursor-pointer shadow-lg transition transform active:scale-95"
+                >
+                  {editingShopId ? 'حفظ التعديلات وتحديث الفرع ✏️' : 'إضافة الفرع الجديد لفروعي 🚀'}
+                </button>
               </form>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
-              <h3 className="font-bold text-gray-900">فروعي المسجلة حالياً ({ownedShops.length}):</h3>
-              <div className="space-y-3">
+            {/* قائمة الفروع المسجلة مع أزرار التعديل والحذف الاحترافية */}
+            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-5">
+              <div className="flex justify-between items-center border-b pb-4">
+                <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
+                  <span>🏢</span> فروعك المسجلة حالياً ({ownedShops.length}):
+                </h3>
+                <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">
+                  إدارة شاملة
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 {ownedShops.map(s => (
-                  <div key={s.id} className="p-4 rounded-2xl border bg-gray-50 flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-base text-gray-900">{s.name}</span>
-                      <p className="text-xs text-gray-600">📍 العنوان: {s.address} | الهاتف: {s.phone}</p>
-                      <p className="text-xs text-gray-500">👷‍♂️ إيميل العامل: {s.workerEmail}</p>
+                  <div key={s.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white transition shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-black text-base text-slate-900">🏪 {s.name}</h4>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                          {s.status === 'active' ? 'نشط ✨' : 'موقوف ⚠️'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                        <MapPin size={13} className="text-red-500" /> العنوان: {s.address} | <Phone size={13} className="text-blue-500" /> الهاتف: {s.phone}
+                      </p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                        <Mail size={13} className="text-purple-500" /> إيميل العامل: <strong className="text-slate-800 font-mono">{s.workerEmail}</strong>
+                      </p>
                     </div>
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl">نشط</span>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                      <button 
+                        onClick={() => handleStartEditShop(s)}
+                        className="flex-1 md:flex-initial bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
+                      >
+                        <Edit3 size={14} /> تعديل
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteShopByOwner(s.id)}
+                        className="flex-1 md:flex-initial bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
+                      >
+                        <Trash2 size={14} /> حذف
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
           </div>
         )}
 
