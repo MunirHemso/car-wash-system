@@ -27,7 +27,6 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // ✅ إضافة دالة تسجيل الخروج لتجنب التعليق عند الضغط على خروج
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('carWash_currentUser');
@@ -65,12 +64,13 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  const [programmerToast, setProgrammerToast] = useState(null);
+  // 🌟 نظام التنبيهات الموحد لجميع صفحات النظام
+  const [toast, setToast] = useState(null);
 
-  const showProgrammerToast = (message, type = 'success') => {
-    setProgrammerToast({ message, type });
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
     setTimeout(() => {
-      setProgrammerToast(prev => (prev?.message === message ? null : prev));
+      setToast(prev => (prev?.message === message ? null : prev));
     }, 10000);
   };
 
@@ -224,13 +224,13 @@ export default function App() {
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-      showProgrammerToast('تم تحديث القوائم وجلب أحدث البيانات بنجاح! 🔄✨', 'success');
+      showToast('تم تحديث القوائم وجلب أحدث البيانات بنجاح! 🔄✨', 'success');
     }, 600);
   };
 
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
-    if (!inputEmail || !inputPassword) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
+    if (!inputEmail || !inputPassword) return showToast('الرجاء إدخال البريد الإلكتروني وكلمة المرور', 'error');
 
     try {
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
@@ -242,7 +242,7 @@ export default function App() {
       if (ownedShops.length > 0) {
         const activeOrValidShops = ownedShops.filter(s => s.status !== 'suspended');
         if (activeOrValidShops.length === 0) {
-          alert('عذراً، حسابك موقوف أو انتهت صلاحية اشتراكه. يرجى مراجعة الإدارة!');
+          showToast('عذراً، حسابك موقوف أو انتهت صلاحية اشتراكه. يرجى مراجعة الإدارة!', 'error');
           return;
         }
 
@@ -262,7 +262,7 @@ export default function App() {
       const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase() && s.workerPass === inputPassword);
       if (targetShop) {
         if (targetShop.status === 'suspended') {
-          alert('عذراً، هذا الفرع معلق أو انتهى اشتراكه من قبل الإدارة!');
+          showToast('عذراً، هذا الفرع معلق أو انتهى اشتراكه من قبل الإدارة!', 'error');
           return;
         }
         const workerData = {
@@ -276,31 +276,31 @@ export default function App() {
         return;
       }
 
-      alert('البريد الإلكتروني أو كلمة المرور غير صحيحة!');
+      showToast('البريد الإلكتروني أو كلمة المرور غير صحيحة!', 'error');
     } catch (error) {
       console.error(error);
-      alert('فشل تسجيل الدخول: تأكد من صحة البيانات المدخلة.');
+      showToast('فشل تسجيل الدخول: تأكد من صحة البيانات المدخلة.', 'error');
     }
   };
 
   const handleForgotPassword = async () => {
     if (!inputEmail) {
-      alert('الرجاء كتابة بريدك الإلكتروني في حقل الإيميل أولاً!');
+      showToast('الرجاء كتابة بريدك الإلكتروني في حقل الإيميل أولاً!', 'error');
       return;
     }
     try {
       await sendPasswordResetEmail(auth, inputEmail);
-      alert('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني بنجاح. 📧');
+      showToast('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني بنجاح. 📧', 'success');
     } catch (error) {
       console.error(error);
-      alert('حدث خطأ، تأكد من أن البريد الإلكتروني مسجل بشكل صحيح في النظام.');
+      showToast('حدث خطأ، تأكد من أن البريد الإلكتروني مسجل بشكل صحيح في النظام.', 'error');
     }
   };
 
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
-      showProgrammerToast('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!', 'error');
+      showToast('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!', 'error');
       return;
     }
 
@@ -338,17 +338,17 @@ export default function App() {
       setNewClientWorkerPass('');
       setNewClientAddress('');
 
-      showProgrammerToast('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳', 'success');
+      showToast('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳', 'success');
       setProgrammerTab('clients');
     } catch (error) {
-      showProgrammerToast('حدث خطأ أثناء إضافة العميل: ' + error.message, 'error');
+      showToast('حدث خطأ أثناء إضافة العميل: ' + error.message, 'error');
     }
   };
 
   const handleApplyDirectDiscountToClient = async (e) => {
     e.preventDefault();
     if (!targetClientEmailForDiscount || directDiscountValue === '') {
-      showProgrammerToast('اختر العميل وأدخل نسبة الخصم', 'error');
+      showToast('اختر العميل وأدخل نسبة الخصم', 'error');
       return;
     }
 
@@ -359,11 +359,11 @@ export default function App() {
           discountPercent: Number(directDiscountValue)
         });
       }
-      showProgrammerToast(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`, 'success');
+      showToast(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`, 'success');
       setDirectDiscountValue('');
       setTargetClientEmailForDiscount('');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء تطبيق الخصم.', 'error');
+      showToast('حدث خطأ أثناء تطبيق الخصم.', 'error');
     }
   };
 
@@ -381,9 +381,9 @@ export default function App() {
         });
       }
       setEditingClientData(null);
-      showProgrammerToast('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅', 'success');
+      showToast('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅', 'success');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء التحديث.', 'error');
+      showToast('حدث خطأ أثناء التحديث.', 'error');
     }
   };
 
@@ -403,9 +403,9 @@ export default function App() {
         });
       }
       setSelectedClientEmail(null);
-      showProgrammerToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
+      showToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء تعليق الحساب.', 'error');
+      showToast('حدث خطأ أثناء تعليق الحساب.', 'error');
     }
   };
 
@@ -434,9 +434,9 @@ export default function App() {
           gracePeriodExpiry: null
         });
       }
-      showProgrammerToast(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`, 'success');
+      showToast(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`, 'success');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء تجديد الاشتراك.', 'error');
+      showToast('حدث خطأ أثناء تجديد الاشتراك.', 'error');
     }
   };
 
@@ -447,9 +447,9 @@ export default function App() {
         status: 'suspended',
         suspendedAt: new Date().toISOString()
       });
-      showProgrammerToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
+      showToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء تعليق الفرع.', 'error');
+      showToast('حدث خطأ أثناء تعليق الفرع.', 'error');
     }
   };
 
@@ -460,15 +460,15 @@ export default function App() {
         suspendedAt: null,
         gracePeriodExpiry: null
       });
-      showProgrammerToast('تم تفعيل الفرع بنجاح!', 'success');
+      showToast('تم تفعيل الفرع بنجاح!', 'success');
     } catch (e) {
-      showProgrammerToast('حدث خطأ أثناء تفعيل الفرع.', 'error');
+      showToast('حدث خطأ أثناء تفعيل الفرع.', 'error');
     }
   };
 
   const handleAddAnnouncement = async (e) => {
     e.preventDefault();
-    if (!ownerNoticeTitle || !ownerNoticeText || selectedShopId === 'all') return alert('الرجاء اختيار فرع محدد وتعبئة العنوان ونَص الملاحظة');
+    if (!ownerNoticeTitle || !ownerNoticeText || selectedShopId === 'all') return showToast('الرجاء اختيار فرع محدد وتعبئة العنوان ونَص الملاحظة', 'error');
     
     try {
       await addDoc(collection(db, "shops", String(selectedShopId), "announcements"), {
@@ -478,9 +478,9 @@ export default function App() {
       });
       setOwnerNoticeTitle('');
       setOwnerNoticeText('');
-      alert('تم نشر التنبيه بنجاح للعامل في الفرع! 📢✨');
+      showToast('تم نشر التنبيه بنجاح للعامل في الفرع! 📢✨', 'success');
     } catch (error) {
-      alert('حدث خطأ أثناء نشر التنبيه.');
+      showToast('حدث خطأ أثناء نشر التنبيه.', 'error');
     }
   };
 
@@ -488,7 +488,7 @@ export default function App() {
     if (!window.confirm('هل أنت متأكد من حذف هذا التنبيه؟')) return;
     try {
       await deleteDoc(doc(db, "shops", String(shopId), "announcements", String(annId)));
-      alert('تم حذف التنبيه بنجاح.');
+      showToast('تم حذف التنبيه بنجاح.', 'success');
     } catch (error) {}
   };
 
@@ -504,9 +504,9 @@ export default function App() {
       });
       setSettlingDebtId(null);
       setRepayNotes('');
-      alert(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`);
+      showToast(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`, 'success');
     } catch (error) {
-      alert('حدث خطأ أثناء تسديد الدين.');
+      showToast('حدث خطأ أثناء تسديد الدين.', 'error');
     }
   };
 
@@ -539,7 +539,7 @@ export default function App() {
           if (type === 'before') setBeforePhoto(compressed);
           if (type === 'after') setAfterPhoto(compressed);
         } catch (err) {
-          alert('خطأ في معالجة الصورة.');
+          showToast('خطأ في معالجة الصورة.', 'error');
         }
       };
       img.src = event.target.result;
@@ -549,7 +549,7 @@ export default function App() {
 
   const handlePrintInvoice = (inv) => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return alert('يرجى السماح بفتح النوافذ المنبثقة.');
+    if (!printWindow) return showToast('يرجى السماح بفتح النوافذ المنبثقة.', 'error');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -598,7 +598,7 @@ export default function App() {
 
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
-    if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
+    if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل', 'error');
 
     try {
       const shopId = Date.now();
@@ -638,16 +638,16 @@ export default function App() {
       setNewShopAddress('');
       setSelectedShopId(shopId);
       
-      alert('تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨');
+      showToast('تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨', 'success');
       setActiveTab('dashboard');
     } catch (error) {
-      alert('حدث خطأ أثناء الحفظ: ' + error.message);
+      showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
     }
   };
 
   const handleDeleteTransactionByOwner = async (shopId, txId) => {
     if (!window.confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
-    try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); alert('تم الحذف بنجاح'); } catch (e) {}
+    try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); showToast('تم الحذف بنجاح', 'success'); } catch (e) {}
   };
 
   const handleStartEditTransaction = (t) => {
@@ -667,9 +667,9 @@ export default function App() {
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
-    if (!plateNumber || !price || !currentUser) return alert('أدخل اللوحة والسعر!');
+    if (!plateNumber || !price || !currentUser) return showToast('أدخل اللوحة والسعر!', 'error');
     const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
-    if (!shopId || shopId === 'all') return alert('اختر محلاً محدداً');
+    if (!shopId || shopId === 'all') return showToast('اختر محلاً محدداً', 'error');
 
     try {
       if (editingTxId) {
@@ -677,7 +677,7 @@ export default function App() {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
-        alert('تم التحديث بنجاح ✏️');
+        showToast('تم التحديث بنجاح ✏️', 'success');
       } else {
         await addDoc(collection(db, "shops", String(shopId), "transactions"), {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
@@ -688,27 +688,47 @@ export default function App() {
           });
           setDebtorName(''); setDebtorPhone('');
         }
-        alert('تم تسجيل الطلب بنجاح! 🚗✨');
+        showToast('تم تسجيل الطلب بنجاح! 🚗✨', 'success');
       }
       setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); setBeforePhoto(null); setAfterPhoto(null);
-    } catch (e) { alert('خطأ: ' + e.message); }
+    } catch (e) { showToast('خطأ: ' + e.message, 'error'); }
   };
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!expTitle || !expAmount || !selectedShopId) return alert('أدخل بيانات المصروف');
+    if (!expTitle || !expAmount || !selectedShopId) return showToast('أدخل بيانات المصروف', 'error');
     try {
       await addDoc(collection(db, "shops", String(selectedShopId), "expenses"), {
         category: expCategory, title: expTitle, amount: Number(expAmount), notes: expNotes, time: new Date().toLocaleTimeString()
       });
       setExpTitle(''); setExpAmount(''); setExpNotes('');
-      alert('تم تسجيل المصروف بنجاح 📉');
-    } catch (e) { alert('خطأ'); }
+      showToast('تم تسجيل المصروف بنجاح 📉', 'success');
+    } catch (e) { showToast('خطأ', 'error'); }
+  };
+
+  // 🔔 عنصر التنبيه العائم الموحد (يظهر تلقائياً في أي مكان عند استدعاء showToast)
+  const renderToastComponent = () => {
+    if (!toast) return null;
+    return (
+      <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 min-w-[320px] max-w-lg">
+        <div className={`p-2 rounded-xl ${toast.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+          {toast.type === 'error' ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
+        </div>
+        <div className="flex-1 text-sm font-semibold">{toast.message}</div>
+        <button 
+          onClick={() => setToast(null)} 
+          className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer text-sm font-bold"
+        >
+          ✕
+        </button>
+      </div>
+    );
   };
 
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
+        {renderToastComponent()}
         <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
           <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
           <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
@@ -768,20 +788,7 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
-        {programmerToast && (
-          <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 min-w-[320px] max-w-lg">
-            <div className={`p-2 rounded-xl ${programmerToast.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-              {programmerToast.type === 'error' ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
-            </div>
-            <div className="flex-1 text-sm font-semibold">{programmerToast.message}</div>
-            <button 
-              onClick={() => setProgrammerToast(null)} 
-              className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer text-sm font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+        {renderToastComponent()}
 
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -998,7 +1005,7 @@ export default function App() {
                 ))}
               </div>
               <div className="flex justify-end">
-                <button onClick={() => showProgrammerToast('تم حفظ الأسعار بنجاح!', 'success')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
+                <button onClick={() => showToast('تم حفظ الأسعار بنجاح!', 'success')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
               </div>
             </div>
           )}
@@ -1055,7 +1062,7 @@ export default function App() {
                           for (const shop of clientShops) {
                             await updateDoc(doc(db, "platformShops", String(shop.id)), { discountPercent: 0 });
                           }
-                          showProgrammerToast('تم إزالة الخصم عن العميل بنجاح.', 'success');
+                          showToast('تم إزالة الخصم عن العميل بنجاح.', 'success');
                         }}
                         className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
                       >
@@ -1275,6 +1282,8 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+        {renderToastComponent()}
+
         <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
           <div>
             <h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1>
@@ -1572,6 +1581,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+      {renderToastComponent()}
+
       {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
         <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
           <AlertTriangle size={18} />
@@ -1923,7 +1934,7 @@ export default function App() {
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-xl mx-auto space-y-4">
             <h3 className="text-xl font-bold text-gray-900">الملف الشخصي والبيانات الضريبية ⚙️</h3>
-            <form onSubmit={e => { e.preventDefault(); alert('تم تحديث البيانات بنجاح!'); }} className="space-y-3">
+            <form onSubmit={e => { e.preventDefault(); showToast('تم تحديث البيانات بنجاح!', 'success'); }} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">اسم صاحب المحل / المؤسسة</label>
                 <input type="text" defaultValue={currentUser.ownerName} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" />
