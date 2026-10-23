@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -140,9 +140,19 @@ export default function App() {
   const [selectedShopId, setSelectedShopId] = useState(1);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // حالات خاصة بلوحة المبرمج
+  // حالات خاصة لوحة المبرمج
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
+
+  // حقول إضافة عميل جديد من قبل المبرمج
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [newClientTax, setNewClientTax] = useState('');
+  const [newClientShopName, setNewClientShopName] = useState('');
+  const [newClientWorkerEmail, setNewClientWorkerEmail] = useState('');
+  const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
+  const [newClientAddress, setNewClientAddress] = useState('');
 
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
@@ -260,6 +270,53 @@ export default function App() {
     } catch (error) {
       console.error(error);
       alert('حدث خطأ، تأكد من أن البريد الإلكتروني مسجل بشكل صحيح في النظام.');
+    }
+  };
+
+  // 🚀 وظيفة المبرمج لإضافة عميل جديد (مع فرعه الأول)
+  const handleProgrammerAddClient = async (e) => {
+    e.preventDefault();
+    if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
+      return alert('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!');
+    }
+
+    try {
+      const shopId = Date.now();
+      const defaultExpiry = new Date();
+      defaultExpiry.setDate(defaultExpiry.getDate() + 30); // 30 يوماً تجريبي/شهري
+
+      const newClientShopObj = {
+        id: shopId,
+        name: newClientShopName,
+        owner: newClientName,
+        ownerEmail: newClientEmail,
+        taxNumber: newClientTax || 'غير مسجل',
+        workerEmail: newClientWorkerEmail,
+        workerPass: newClientWorkerPass,
+        phone: newClientPhone || '+90 ...',
+        address: newClientAddress || 'العنوان لم يحدد',
+        code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
+        status: 'active',
+        subscriptionType: 'monthly',
+        subscriptionExpiry: defaultExpiry.toISOString().slice(0, 10),
+        suspendedAt: null
+      };
+
+      await setDoc(doc(db, "platformShops", String(shopId)), newClientShopObj);
+
+      setNewClientName('');
+      setNewClientEmail('');
+      setNewClientPhone('');
+      setNewClientTax('');
+      setNewClientShopName('');
+      setNewClientWorkerEmail('');
+      setNewClientWorkerPass('');
+      setNewClientAddress('');
+
+      alert('تم إضافة العميل الجديد وفرعه الأول بنجاح تام في النظام! 🌟✨');
+      setProgrammerTab('clients');
+    } catch (error) {
+      alert('حدث خطأ أثناء إضافة العميل: ' + error.message);
     }
   };
 
@@ -548,7 +605,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (تجميع العملاء وإدارة الاشتراكات والملفات الضريبية) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء الجدد، الاشتراكات والملفات الضريبية) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -586,6 +643,9 @@ export default function App() {
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             👥 عملاء المنصة (أصحاب المحلات)
           </button>
+          <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+            ➕ إضافة عميل جديد للنظام
+          </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             📑 كشف حسابات الاشتراكات العامة
           </button>
@@ -611,6 +671,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* تبويب 1: عرض قائمة العملاء */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -650,6 +711,64 @@ export default function App() {
             </div>
           )}
 
+          {/* تبويب 2: إضافة عميل جديد للنظام */}
+          {programmerTab === 'addClient' && (
+            <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-2xl mx-auto space-y-6">
+              <div className="flex items-center gap-3 border-b pb-4">
+                <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><UserPlus size={24} /></div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">إضافة عميل جديد للنظام (صاحب مغاسل جديد)</h3>
+                  <p className="text-xs text-gray-500">أدخل بيانات العميل الشخصية والضريبية وفرعه الأول لإنشاء حساب مستقل له</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleProgrammerAddClient} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم العميل الكامل (صاحب المحل) *</label>
+                    <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني للعميل (Gmail) *</label>
+                    <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم هاتف العميل</label>
+                    <input type="text" placeholder="+90 500 000 0000" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي / المعرف الضريبي</label>
+                    <input type="text" placeholder="الرقم الضريبي للمؤسسة" value={newClientTax} onChange={e => setNewClientTax(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 space-y-3">
+                  <h4 className="font-bold text-sm text-purple-700">تفاصيل الفرع الأول لهذا العميل:</h4>
+                  <input type="text" placeholder="اسم الفرع الأول (مثال: مغسلة النور - الفرع الرئيسي) *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">إيميل العامل للفرع *</label>
+                      <input type="email" placeholder="worker.khaled@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">كلمة سر العامل *</label>
+                      <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    </div>
+                  </div>
+
+                  <input type="text" placeholder="عنوان الفرع (المنطقة والشارع)" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                </div>
+
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل الجديد وإنشاء حسابه 🚀</button>
+              </form>
+            </div>
+          )}
+
+          {/* الملف الشخصي والضريبي التفصيلي للعميل المحدد */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
