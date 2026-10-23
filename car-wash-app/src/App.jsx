@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
-  Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
-  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet, LogOut, UsersRound 
+  Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -29,20 +28,6 @@ export default function App() {
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
 
-  // تسجيل الخروج بشكل آمن وإظهار صفحة تسجيل الدخول
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.warn('Firebase sign-out notice:', error);
-    } finally {
-      localStorage.removeItem('carWash_currentUser');
-      setCurrentUser(null);
-      setInputEmail('');
-      setInputPassword('');
-    }
-  };
-
   const [shops, setShops] = useState([
     { 
       id: 1, 
@@ -63,6 +48,7 @@ export default function App() {
     }
   ]);
 
+  // خطط الأسعار للباقات
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
@@ -71,6 +57,16 @@ export default function App() {
 
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
+
+  // نظام التنبيهات الاحترافي الخاص بلوحة المبرمج (مدة 10 ثواني + زر إغلاق X)
+  const [programmerToast, setProgrammerToast] = useState(null); // { message, type }
+
+  const showProgrammerToast = (message, type = 'success') => {
+    setProgrammerToast({ message, type });
+    setTimeout(() => {
+      setProgrammerToast(prev => (prev?.message === message ? null : prev));
+    }, 10000); // 10 ثواني
+  };
 
   // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
@@ -168,6 +164,7 @@ export default function App() {
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
+  // حقول إضافة عميل جديد
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -177,6 +174,7 @@ export default function App() {
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
+  // حقول تعديل العميل
   const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
@@ -223,7 +221,7 @@ export default function App() {
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-      alert('تم تحديث القوائم وجلب أحدث البيانات بنجاح! 🔄✨');
+      showProgrammerToast('تم تحديث القوائم وجلب أحدث البيانات بنجاح! 🔄✨', 'success');
     }, 600);
   };
 
@@ -301,7 +299,8 @@ export default function App() {
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
-      return alert('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!');
+      showProgrammerToast('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!', 'error');
+      return;
     }
 
     try {
@@ -338,16 +337,19 @@ export default function App() {
       setNewClientWorkerPass('');
       setNewClientAddress('');
 
-      alert('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳');
+      showProgrammerToast('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳', 'success');
       setProgrammerTab('clients');
     } catch (error) {
-      alert('حدث خطأ أثناء إضافة العميل: ' + error.message);
+      showProgrammerToast('حدث خطأ أثناء إضافة العميل: ' + error.message, 'error');
     }
   };
 
   const handleApplyDirectDiscountToClient = async (e) => {
     e.preventDefault();
-    if (!targetClientEmailForDiscount || directDiscountValue === '') return alert('اختر العميل وأدخل نسبة الخصم');
+    if (!targetClientEmailForDiscount || directDiscountValue === '') {
+      showProgrammerToast('اختر العميل وأدخل نسبة الخصم', 'error');
+      return;
+    }
 
     try {
       const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === targetClientEmailForDiscount.toLowerCase());
@@ -356,11 +358,11 @@ export default function App() {
           discountPercent: Number(directDiscountValue)
         });
       }
-      alert(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`);
+      showProgrammerToast(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`, 'success');
       setDirectDiscountValue('');
       setTargetClientEmailForDiscount('');
     } catch (e) {
-      alert('حدث خطأ أثناء تطبيق الخصم.');
+      showProgrammerToast('حدث خطأ أثناء تطبيق الخصم.', 'error');
     }
   };
 
@@ -378,9 +380,9 @@ export default function App() {
         });
       }
       setEditingClientData(null);
-      alert('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅');
+      showProgrammerToast('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅', 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء التحديث.');
+      showProgrammerToast('حدث خطأ أثناء التحديث.', 'error');
     }
   };
 
@@ -400,9 +402,9 @@ export default function App() {
         });
       }
       setSelectedClientEmail(null);
-      alert('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.');
+      showProgrammerToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء تعليق الحساب.');
+      showProgrammerToast('حدث خطأ أثناء تعليق الحساب.', 'error');
     }
   };
 
@@ -431,9 +433,9 @@ export default function App() {
           gracePeriodExpiry: null
         });
       }
-      alert(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`);
+      showProgrammerToast(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`, 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء تجديد الاشتراك.');
+      showProgrammerToast('حدث خطأ أثناء تجديد الاشتراك.', 'error');
     }
   };
 
@@ -444,9 +446,9 @@ export default function App() {
         status: 'suspended',
         suspendedAt: new Date().toISOString()
       });
-      alert('تم تعليق المحل وإيقاف اشتراكه بنجاح.');
+      showProgrammerToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء تعليق الفرع.');
+      showProgrammerToast('حدث خطأ أثناء تعليق الفرع.', 'error');
     }
   };
 
@@ -457,9 +459,9 @@ export default function App() {
         suspendedAt: null,
         gracePeriodExpiry: null
       });
-      alert('تم تفعيل الفرع بنجاح!');
+      showProgrammerToast('تم تفعيل الفرع بنجاح!', 'success');
     } catch (e) {
-      alert('حدث خطأ أثناء تفعيل الفرع.');
+      showProgrammerToast('حدث خطأ أثناء تفعيل الفرع.', 'error');
     }
   };
 
@@ -671,7 +673,7 @@ export default function App() {
     try {
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
         alert('تم التحديث بنجاح ✏️');
@@ -722,7 +724,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin مع التعديلات المطلوبة) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin مع عزل الحسابات، إخفاء الإيميل، والتنبيهات المخصصة) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -766,6 +768,22 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+        {/* 🔔 شريط التنبيهات العائم الاحترافي (مدة 10 ثواني + زر X للإغلاق) */}
+        {programmerToast && (
+          <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 min-w-[320px] max-w-lg">
+            <div className={`p-2 rounded-xl ${programmerToast.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+              {programmerToast.type === 'error' ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
+            </div>
+            <div className="flex-1 text-sm font-semibold">{programmerToast.message}</div>
+            <button 
+              onClick={() => setProgrammerToast(null)} 
+              className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition cursor-pointer text-sm font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Shield className="text-purple-400" size={24} />
@@ -983,7 +1001,7 @@ export default function App() {
                 ))}
               </div>
               <div className="flex justify-end">
-                <button onClick={() => alert('تم حفظ الأسعار بنجاح!')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
+                <button onClick={() => showProgrammerToast('تم حفظ الأسعار بنجاح!', 'success')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
               </div>
             </div>
           )}
@@ -1040,7 +1058,7 @@ export default function App() {
                           for (const shop of clientShops) {
                             await updateDoc(doc(db, "platformShops", String(shop.id)), { discountPercent: 0 });
                           }
-                          alert('تم إزالة الخصم عن العميل بنجاح.');
+                          showProgrammerToast('تم إزالة الخصم عن العميل بنجاح.', 'success');
                         }}
                         className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
                       >
