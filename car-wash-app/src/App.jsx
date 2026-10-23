@@ -64,7 +64,11 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // 🌟 نظام التنبيهات الموحد لجميع صفحات النظام
+  // 🌟 حالات البحث والفلترة الجديدة (التواريخ وسجلات السيارات وبرقم اللوحة)
+  const [selectedDateFilter, setSelectedDateFilter] = useState(new Date().toISOString().slice(0, 10));
+  const [plateSearchQuery, setPlateSearchQuery] = useState('');
+
+  // 🌟 نظام التنبيهات الموحد
   const [toast, setToast] = useState(null);
 
   const showToast = (message, type = 'success') => {
@@ -672,6 +676,7 @@ export default function App() {
     if (!shopId || shopId === 'all') return showToast('اختر محلاً محدداً', 'error');
 
     try {
+      const todayDateStr = new Date().toISOString().slice(0, 10);
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
@@ -680,11 +685,11 @@ export default function App() {
         showToast('تم التحديث بنجاح ✏️', 'success');
       } else {
         await addDoc(collection(db, "shops", String(shopId), "transactions"), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: todayDateStr, beforePhoto, afterPhoto
         });
         if (payMethod === 'دين') {
           await addDoc(collection(db, "shops", String(shopId), "debts"), {
-            debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
+            debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: todayDateStr, addedBy: 'عامل الفرع'
           });
           setDebtorName(''); setDebtorPhone('');
         }
@@ -706,7 +711,6 @@ export default function App() {
     } catch (e) { showToast('خطأ', 'error'); }
   };
 
-  // 🔔 عنصر التنبيه العائم الموحد (يظهر تلقائياً في أي مكان عند استدعاء showToast)
   const renderToastComponent = () => {
     if (!toast) return null;
     return (
@@ -764,12 +768,9 @@ export default function App() {
     });
 
     const clientsList = Object.values(clientsMap);
-
     const activeClientsList = clientsList.filter(client => client.shopsList.some(s => s.status === 'active'));
     const suspendedClientsList = clientsList.filter(client => client.shopsList.every(s => s.status === 'suspended'));
-
     const activeShopsCount = shops.filter(s => s.status === 'active').length;
-    const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
 
     let totalSubscriptionRevenue = 0;
@@ -778,7 +779,6 @@ export default function App() {
       const basePrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
       const discount = client.discountPercent || 0;
       const discountedPrice = basePrice * (1 - discount / 100);
-
       totalSubscriptionRevenue += discountedPrice * client.shopsList.filter(s => s.status === 'active').length;
     });
 
@@ -1280,6 +1280,13 @@ export default function App() {
     const shopDebts = debts[shopId] || [];
     const shopAnnouncementsList = announcements[shopId] || [];
 
+    // تصفية المعاملات حسب التاريخ ورقم اللوحة
+    const filteredWorkerTx = shopTx.filter(t => {
+      const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
+      const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
+      return matchDate && matchPlate;
+    });
+
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
@@ -1474,38 +1481,83 @@ export default function App() {
                 )}
               </div>
 
+              {/* 🌟 قسم سجلات المركبات اليومية / السجلات القديمة مع خيار البحث برقم اللوحة */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-                <div className="flex justify-between items-center border-b pb-3">
-                  <h3 className="font-bold text-gray-800">المركبات المسجلة اليوم في {currentUser.shopName}</h3>
-                  <button 
-                    onClick={handleRefreshData} 
-                    disabled={isRefreshing}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
-                  >
-                    <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                    {isRefreshing ? 'جاري التحديث...' : 'تحديث القائمة'}
-                  </button>
+                <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
+                  <h3 className="font-bold text-gray-800">
+                    {selectedDateFilter ? `مركبات تاريخ: ${selectedDateFilter}` : 'سجلات جميع التواريخ القديمة'} 
+                    <span className="text-xs text-purple-600 font-semibold mr-2">({filteredWorkerTx.length} نتيجة)</span>
+                  </h3>
+                  
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* حقل البحث برقم اللوحة */}
+                    <input 
+                      type="text" 
+                      placeholder="بحث برقم اللوحة 🔍" 
+                      value={plateSearchQuery} 
+                      onChange={e => setPlateSearchQuery(e.target.value)}
+                      className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    
+                    {/* اختيار تاريخ مخصص (للتواريخ القديمة وسجلات البيانات) */}
+                    <input 
+                      type="date" 
+                      value={selectedDateFilter} 
+                      onChange={e => setSelectedDateFilter(e.target.value)}
+                      className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold"
+                    />
+                    
+                    <button 
+                      onClick={() => setSelectedDateFilter(new Date().toISOString().slice(0, 10))}
+                      className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      اليوم 📅
+                    </button>
+
+                    <button 
+                      onClick={() => setSelectedDateFilter('')}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      كل السجلات 📂
+                    </button>
+
+                    <button 
+                      onClick={handleRefreshData} 
+                      disabled={isRefreshing}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
+                    >
+                      <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
+                      {isRefreshing ? 'جاري التحديث...' : 'تحديث'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  {shopTx.length === 0 ? <p className="text-xs text-gray-400">لا توجد عمليات مسجلة بعد اليوم.</p> : shopTx.map(t => (
-                    <div key={t.id} className="p-4 bg-gray-50 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div>
-                        <span className="font-bold block text-base text-gray-900">🏪 {currentUser.shopName}</span>
-                        <span className="text-sm font-semibold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span>
-                        <p className="text-xs text-gray-600">{t.service} | الطريقة: {t.method === 'دين' ? 'دين ⚠️' : t.method}</p>
-                        {t.notes && <p className="text-xs text-amber-700 italic">ملاحظة: {t.notes}</p>}
-                        <span className="text-xs font-bold text-emerald-600">المبلغ المدخل: {t.price} ليرة {t.method === 'دين' && '(على الذمة)'}</span>
+                  {filteredWorkerTx.length === 0 ? (
+                    <p className="text-xs text-gray-400 py-4 text-center">لا توجد عمليات مسجلة تطابق بحثك أو التاريخ المختار.</p>
+                  ) : (
+                    filteredWorkerTx.map(t => (
+                      <div key={t.id} className="p-4 bg-gray-50 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold block text-base text-gray-900">🏪 {currentUser.shopName}</span>
+                            <span className="text-[11px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">التاريخ: {t.date || 'غير محدد'}</span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span>
+                          <p className="text-xs text-gray-600">{t.service} | الطريقة: {t.method === 'دين' ? 'دين ⚠️' : t.method}</p>
+                          {t.notes && <p className="text-xs text-amber-700 italic">ملاحظة: {t.notes}</p>}
+                          <span className="text-xs font-bold text-emerald-600">المبلغ المدخل: {t.price} ليرة {t.method === 'دين' && '(على الذمة)'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {t.beforePhoto && <img src={t.beforePhoto} alt="قبل" className="w-12 h-12 object-cover rounded-lg border" />}
+                          {t.afterPhoto && <img src={t.afterPhoto} alt="بعد" className="w-12 h-12 object-cover rounded-lg border" />}
+                          
+                          <button onClick={() => handleStartEditTransaction(t)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Edit3 size={13} /> تعديل</button>
+                          <button onClick={() => setSelectedInvoice({ ...t, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo || { name: currentUser.shopName, address: 'فرع الخدمة', phone: '+90...' } })} className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {t.beforePhoto && <img src={t.beforePhoto} alt="قبل" className="w-12 h-12 object-cover rounded-lg border" />}
-                        {t.afterPhoto && <img src={t.afterPhoto} alt="بعد" className="w-12 h-12 object-cover rounded-lg border" />}
-                        
-                        <button onClick={() => handleStartEditTransaction(t)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Edit3 size={13} /> تعديل</button>
-                        <button onClick={() => setSelectedInvoice({ ...t, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo || { name: currentUser.shopName, address: 'فرع الخدمة', phone: '+90...' } })} className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -1572,6 +1624,13 @@ export default function App() {
   const currentShopDebts = debts[selectedShopId] || [];
   const shopRepayList = debtRepayments[selectedShopId] || [];
   const shopAnnouncementsList = announcements[selectedShopId] || [];
+
+  // تصفية المعاملات في لوحة المالك حسب التاريخ ورقم اللوحة
+  const filteredOwnerTx = currentShopTx.filter(t => {
+    const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
+    const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
+    return matchDate && matchPlate;
+  });
 
   const shopTotalServices = currentShopTx.reduce((acc, t) => acc + Number(t.price), 0);
   const shopTotalPaid = currentShopTx.reduce((acc, t) => acc + Number(t.paid), 0) + shopRepayList.reduce((acc, r) => acc + Number(r.amount), 0);
@@ -1778,33 +1837,78 @@ export default function App() {
                   </form>
                 </div>
 
+                {/* 🌟 حركة المركبات وسجلات البيانات اليومية والقديمة للفرع في لوحة المالك */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <h3 className="font-bold text-gray-900">حركة المركبات لـ {currentShop?.name} (صلاحية الحذف للإدارة فقط)</h3>
-                    <button 
-                      onClick={handleRefreshData} 
-                      disabled={isRefreshing}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
-                    >
-                      <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                      {isRefreshing ? 'جاري التحديث...' : 'تحديث القائمة'}
-                    </button>
+                  <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
+                    <h3 className="font-bold text-gray-900">
+                      {selectedDateFilter ? `حركة مركبات تاريخ: ${selectedDateFilter}` : 'سجلات كافة التواريخ'}
+                      <span className="text-xs text-blue-600 font-semibold mr-2">({filteredOwnerTx.length} نتيجة)</span>
+                    </h3>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* حقل البحث برقم اللوحة */}
+                      <input 
+                        type="text" 
+                        placeholder="بحث برقم اللوحة 🔍" 
+                        value={plateSearchQuery} 
+                        onChange={e => setPlateSearchQuery(e.target.value)}
+                        className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      {/* اختيار تاريخ مخصص للسجلات القديمة */}
+                      <input 
+                        type="date" 
+                        value={selectedDateFilter} 
+                        onChange={e => setSelectedDateFilter(e.target.value)}
+                        className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold"
+                      />
+
+                      <button 
+                        onClick={() => setSelectedDateFilter(new Date().toISOString().slice(0, 10))}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        اليوم 📅
+                      </button>
+
+                      <button 
+                        onClick={() => setSelectedDateFilter('')}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        كل السجلات 📂
+                      </button>
+
+                      <button 
+                        onClick={handleRefreshData} 
+                        disabled={isRefreshing}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
+                      >
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
+                        {isRefreshing ? 'جاري التحديث...' : 'تحديث'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-3">
-                    {currentShopTx.length === 0 ? <p className="text-xs text-gray-400">لا توجد سيارات مسجلة لهذا الفرع اليوم.</p> : currentShopTx.map(t => (
-                      <div key={t.id} className="p-3 bg-gray-50 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border">
-                        <div>
-                          <span className="font-bold block text-gray-900">🏪 {currentShop.name}</span>
-                          <span className="font-bold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span> - {t.service}
-                          <span className="block text-xs text-gray-500">المبلغ المسجل: {t.price} ليرة | الحالة: {t.method === 'دين' ? 'دين ⚠️' : t.method} {t.notes && `| ملاحظة: ${t.notes}`}</span>
+                    {filteredOwnerTx.length === 0 ? (
+                      <p className="text-xs text-gray-400 py-4 text-center">لا توجد سيارات مسجلة تطابق البحث أو التاريخ المحدد.</p>
+                    ) : (
+                      filteredOwnerTx.map(t => (
+                        <div key={t.id} className="p-3 bg-gray-50 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold block text-gray-900">🏪 {currentShop.name}</span>
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono font-bold">التاريخ: {t.date || 'غير محدد'}</span>
+                            </div>
+                            <span className="font-bold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span> - {t.service}
+                            <span className="block text-xs text-gray-500">المبلغ المسجل: {t.price} ليرة | الحالة: {t.method === 'دين' ? 'دين ⚠️' : t.method} {t.notes && `| ملاحظة: ${t.notes}`}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleDeleteTransactionByOwner(selectedShopId, t.id)} className="bg-red-100 text-red-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Trash2 size={13} /> حذف الإدارة</button>
+                            <button onClick={() => setSelectedInvoice({ ...t, shopName: currentShop.name, shopInfo: currentShop })} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleDeleteTransactionByOwner(selectedShopId, t.id)} className="bg-red-100 text-red-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Trash2 size={13} /> حذف الإدارة</button>
-                          <button onClick={() => setSelectedInvoice({ ...t, shopName: currentShop.name, shopInfo: currentShop })} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
