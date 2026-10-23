@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -652,7 +652,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات، وكشوفات الاشتراكات) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات، وكشوفات الاشتراكات المالية) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -673,6 +673,16 @@ export default function App() {
     const activeShopsCount = shops.filter(s => s.status === 'active').length;
     const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
+
+    // حساب إجمالي الإيرادات المتوقعة من الاشتراكات الفعالة
+    let totalSubscriptionRevenue = 0;
+    clientsList.forEach(client => {
+      const firstShop = client.shopsList[0] || {};
+      const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+      if (client.shopsList.some(s => s.status === 'active')) {
+        totalSubscriptionRevenue += planPrice * client.shopsList.length;
+      }
+    });
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
@@ -718,13 +728,13 @@ export default function App() {
               <span className="text-gray-500 text-sm">الفروع النشطة</span>
               <h3 className="text-3xl font-black text-emerald-600 mt-1">{activeShopsCount}</h3>
             </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-red-100">
-              <span className="text-gray-500 text-sm">الفروع الموقوفة/المنتهية</span>
-              <h3 className="text-3xl font-black text-red-600 mt-1">{suspendedShopsCount}</h3>
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
+              <span className="text-gray-500 text-sm">إجمالي إيرادات الاشتراكات</span>
+              <h3 className="text-3xl font-black text-purple-600 mt-1">{totalSubscriptionRevenue} ليرة</h3>
             </div>
           </div>
 
-          {/* تبويب 1: قائمة العملاء */}
+          {/* تبويب 1: قائمة العملاء (مع عرض عدد الفروع) */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -1010,52 +1020,91 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 5: كشف حسابات الاشتراكات المالية */}
+          {/* تبويب 5: كشف حسابات الاشتراكات المالية (معاد تصميمه بالكامل) */}
           {programmerTab === 'subscriptionsReport' && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
-              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات والإيرادات المالية للمنصة
-              </h3>
-              <p className="text-xs text-gray-500">تقارير إيرادات الاشتراكات بحسب الباقات النشطة والعملاء المسجلين.</p>
+            <div className="space-y-6">
+              {/* بطاقات المجموع الإيرادي */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-r from-purple-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex items-center justify-between">
+                  <div>
+                    <span className="text-purple-300 text-xs font-bold uppercase tracking-wider">إجمالي الإيرادات المتوقعة</span>
+                    <h3 className="text-3xl font-black text-emerald-400 mt-1">{totalSubscriptionRevenue} ليرة</h3>
+                  </div>
+                  <div className="bg-white/10 p-4 rounded-2xl"><Wallet size={28} className="text-purple-300" /></div>
+                </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-sm">
-                  <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
-                    <tr>
-                      <th className="p-3">صاحب المحل (العميل)</th>
-                      <th className="p-3">الرقم الضريبي</th>
-                      <th className="p-3">عدد الفروع</th>
-                      <th className="p-3">نوع الباقة النشطة</th>
-                      <th className="p-3">قيمة الاشتراك المتوقعة</th>
-                      <th className="p-3">تاريخ انتهاء الاشتراك</th>
-                      <th className="p-3">الحالة</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {clientsList.map((client, idx) => {
-                      const firstShop = client.shopsList[0] || {};
-                      const hasActiveShop = client.shopsList.some(s => s.status === 'active');
-                      const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
-                      const totalEstimated = planPrice * client.shopsList.length;
+                <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
+                  <div>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء المشتركين</span>
+                    <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length} عميل</h3>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
+                </div>
 
-                      return (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
-                          <td className="p-3 font-mono">{client.taxNumber}</td>
-                          <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
-                          <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : firstShop.subscriptionType === 'yearly' ? 'سنوي 📅' : firstShop.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
-                          <td className="p-3 font-black text-emerald-600">{totalEstimated} ليرة</td>
-                          <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
-                          <td className="p-3">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {hasActiveShop ? 'نشط' : 'معلق / منتهي'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
+                  <div>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي الفروع بالمنصة</span>
+                    <h3 className="text-3xl font-black text-blue-600 mt-1">{shops.length} فرع</h3>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-2xl"><Building size={28} className="text-blue-600" /></div>
+                </div>
+              </div>
+
+              {/* الجدول المعاد تصميمه لعرض العملاء وعدد فروعهم واشتراكاتهم بدلاً من تفصيل الفروع بشكل عشوائي */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات المالية (حسب العملاء)
+                  </h3>
+                  <button 
+                    onClick={handleRefreshData} 
+                    disabled={isRefreshing}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
+                  >
+                    <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
+                    {isRefreshing ? 'جاري التحديث...' : 'تحديث البيانات'}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
+                      <tr>
+                        <th className="p-3">صاحب المحل (العميل)</th>
+                        <th className="p-3">الرقم الضريبي</th>
+                        <th className="p-3">عدد الفروع المملوكة</th>
+                        <th className="p-3">نوع الباقة النشطة</th>
+                        <th className="p-3">إيراد العميل المتوقع</th>
+                        <th className="p-3">تاريخ انتهاء الاشتراك</th>
+                        <th className="p-3">الحالة العامة</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {clientsList.map((client, idx) => {
+                        const firstShop = client.shopsList[0] || {};
+                        const hasActiveShop = client.shopsList.some(s => s.status === 'active');
+                        const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+                        const totalEstimated = planPrice * client.shopsList.length;
+
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
+                            <td className="p-3 font-mono">{client.taxNumber}</td>
+                            <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
+                            <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : firstShop.subscriptionType === 'yearly' ? 'سنوي 📅' : firstShop.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
+                            <td className="p-3 font-black text-emerald-600">{totalEstimated} ليرة</td>
+                            <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                {hasActiveShop ? 'نشط' : 'معلق / منتهي'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -1131,13 +1180,12 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك) مع فحص انتهاء الاشتراك وشريط التحذير =================
+  // ================= لوحة صاحب المحل (المالك) مع التحذير التلقائي لانتهاء الاشتراك =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
   const targetShopIds = isAllShops ? ownedShops.map(s => s.id) : [Number(selectedShopId)];
 
-  // حساب الأيام المتبقية لانتهاء الاشتراك للفرع النشط
   const calculateDaysRemaining = (expiryDateStr) => {
     if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 999;
     const diffTime = new Date(expiryDateStr) - new Date();
@@ -1198,7 +1246,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
-      {/* ⚠️ شريط تحذير انتهاء الاشتراك المثبت في الأعلى */}
+      {/* ⚠️ شريط التحذير بانتهاء الاشتراك بصفحة المالك */}
       {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
         <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
           <AlertTriangle size={18} />
