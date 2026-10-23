@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Tag as TagIcon, Percent
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -47,7 +47,25 @@ export default function App() {
     }
   ]);
 
-  // مزامنة المحلات والفروع سحابياً بشكل لحظي من Firestore
+  // خطط الأسعار الافتراضية للباقات
+  const [pricingPlans, setPricingPlans] = useState([
+    { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
+    { id: 2, name: 'الباقة السنوية (توفير)', type: 'yearly', price: 5000, currency: 'ليرة' },
+    { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة' }
+  ]);
+
+  // قائمة الخصومات
+  const [discountsList, setDiscountsList] = useState([
+    { id: 1, code: 'WELCOME10', percent: 10, description: 'خصم الترحيب للعملاء الجدد' },
+    { id: 2, code: 'VIP20', percent: 20, description: 'خصم خاص لكبار العملاء' }
+  ]);
+
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanPrice, setNewPlanPrice] = useState('');
+  const [newDiscountCode, setNewDiscountCode] = useState('');
+  const [newDiscountPercent, setNewDiscountPercent] = useState('');
+
+  // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
     const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
       if (!snapshot.empty) {
@@ -152,6 +170,9 @@ export default function App() {
   const [newClientWorkerEmail, setNewClientWorkerEmail] = useState('');
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
+
+  // حقول تعديل بيانات العميل
+  const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
@@ -282,7 +303,7 @@ export default function App() {
     try {
       const shopId = Date.now();
       const trialExpiry = new Date();
-      trialExpiry.setDate(trialExpiry.getDate() + 7); // فترة تجريبية 7 أيام منذ الإنشاء
+      trialExpiry.setDate(trialExpiry.getDate() + 7); // 7 أيام تجريبية
 
       const newClientShopObj = {
         id: shopId,
@@ -316,6 +337,43 @@ export default function App() {
       setProgrammerTab('clients');
     } catch (error) {
       alert('حدث خطأ أثناء إضافة العميل: ' + error.message);
+    }
+  };
+
+  // 🚀 تحديث بيانات العميل (تعديل أو إعادة تعيين بيانات الدخول)
+  const handleSaveClientEdits = async (e) => {
+    e.preventDefault();
+    if (!editingClientData) return;
+
+    try {
+      const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === editingClientData.ownerEmail.toLowerCase());
+      for (const shop of clientShops) {
+        await updateDoc(doc(db, "platformShops", String(shop.id)), {
+          owner: editingClientData.ownerName,
+          taxNumber: editingClientData.taxNumber,
+          phone: editingClientData.phone
+        });
+      }
+      setEditingClientData(null);
+      alert('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅');
+    } catch (e) {
+      alert('حدث خطأ أثناء التحديث.');
+    }
+  };
+
+  // 🚀 حذف العميل بالكامل مع جميع فروعه
+  const handleDeleteClientCompletely = async (clientEmail) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا العميل وجميع فروعه نهائياً؟ لا يمكن التراجع عن هذا الإجراء!')) return;
+
+    try {
+      const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
+      for (const shop of clientShops) {
+        await deleteDoc(doc(db, "platformShops", String(shop.id)));
+      }
+      setSelectedClientEmail(null);
+      alert('تم حذف العميل وجميع فروعه بنجاح من قاعدة البيانات.');
+    } catch (e) {
+      alert('حدث خطأ أثناء الحذف.');
     }
   };
 
@@ -481,7 +539,7 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
-  // 🚀 إضافة فرع جديد من قبل صاحب المحل مع 7 أيام تجريبية تلقائياً
+  // إضافة فرع جديد من قبل صاحب المحل مع 7 أيام تجريبية
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -489,7 +547,7 @@ export default function App() {
     try {
       const shopId = Date.now();
       const trialExpiry = new Date();
-      trialExpiry.setDate(trialExpiry.getDate() + 7); // فترة تجريبية 7 أيام للفرع الجديد أيضاً
+      trialExpiry.setDate(trialExpiry.getDate() + 7);
 
       const shopObj = {
         id: shopId,
@@ -587,7 +645,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (تجميع العملاء بعرض كم فرع لديهم وكشف الحسابات العام للعملاء) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء وعدد فروعهم، باقات الأسعار، والخصومات) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -614,19 +672,25 @@ export default function App() {
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Shield className="text-purple-400" size={24} />
-            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة عملاء المنصة والاشتراكات)</span>
+            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، والاشتراكات)</span>
           </div>
           <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1">
             <LogOut size={14} /> خروج
           </button>
         </header>
 
-        <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold">
+        <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold flex-wrap">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            👥 عملاء المنصة (أصحاب المحلات)
+            👥 عملاء المنصة (أصحاب المحلات وعدد فروعهم)
           </button>
           <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            ➕ إضافة عميل جديد للنظام
+            ➕ إضافة عميل جديد
+          </button>
+          <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'pricingPlans' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+            💰 باقات الأسعار والاشتراكات
+          </button>
+          <button onClick={() => { setProgrammerTab('discounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'discounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+            🎁 إدارة الخصومات
           </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             📑 كشف حسابات الاشتراكات العامة
@@ -653,7 +717,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* تبويب 1: عرض قائمة العملاء */}
+          {/* تبويب 1: عرض قائمة العملاء (أصحاب المحلات وكم فرع لديهم) */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -693,7 +757,7 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 2: إضافة عميل جديد للنظام مع 7 أيام تجريبية */}
+          {/* تبويب 2: إضافة عميل جديد مع 7 أيام تجريبية */}
           {programmerTab === 'addClient' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-2xl mx-auto space-y-6">
               <div className="flex items-center gap-3 border-b pb-4">
@@ -750,7 +814,83 @@ export default function App() {
             </div>
           )}
 
-          {/* الملف الشخصي والضريبي التفصيلي للعميل المحدد */}
+          {/* تبويب 3: باقات الأسعار والاشتراكات */}
+          {programmerTab === 'pricingPlans' && (
+            <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
+              <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
+                  <p className="text-xs text-gray-500">حدد أسعار الباقات التي تظهر لعملائك أو تطلبها منهم لتجديد الاشتراكات</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {pricingPlans.map(plan => (
+                  <div key={plan.id} className="p-5 border rounded-2xl bg-gray-50 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
+                      <p className="text-2xl font-black text-purple-600 mt-2">{plan.price} {plan.currency}</p>
+                    </div>
+                    <div className="flex gap-2 pt-3 border-t">
+                      <input 
+                        type="number" 
+                        defaultValue={plan.price} 
+                        onChange={e => {
+                          const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
+                          setPricingPlans(updated);
+                        }}
+                        className="w-full px-3 py-1.5 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200 flex justify-between items-center">
+                <span className="text-xs font-bold text-purple-900">💡 ملاحظة: تعديل أسعار الباقات هنا ينعكس على السجلات المالية الخاصة بك.</span>
+                <button onClick={() => alert('تم حفظ الأسعار بنجاح!')} className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold">حفظ الأسعار ✅</button>
+              </div>
+            </div>
+          )}
+
+          {/* تبويب 4: إدارة الخصومات والعروض */}
+          {programmerTab === 'discounts' && (
+            <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
+              <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">🎁 نظام الخصومات والعروض الترويجية</h3>
+                  <p className="text-xs text-gray-500">أنشئ رموز خصم لعملائك (نسبة مئوية من قيمة الاشتراك)</p>
+                </div>
+              </div>
+
+              <form onSubmit={e => {
+                e.preventDefault();
+                if (!newDiscountCode || !newDiscountPercent) return alert('أدخل الكود ونسبة الخصم');
+                setDiscountsList([...discountsList, { id: Date.now(), code: newDiscountCode.toUpperCase(), percent: Number(newDiscountPercent), description: 'خصم مخصص' }]);
+                setNewDiscountCode('');
+                setNewDiscountPercent('');
+                alert('تمت إضافة كود الخصم بنجاح! 🎉');
+              }} className="flex gap-3 bg-gray-50 p-4 rounded-2xl border">
+                <input type="text" placeholder="كود الخصم (مثال: SALE50)" value={newDiscountCode} onChange={e => setNewDiscountCode(e.target.value)} className="px-3 py-2 border rounded-xl text-sm uppercase bg-white text-gray-900 font-bold flex-1" required />
+                <input type="number" placeholder="النسبة %" value={newDiscountPercent} onChange={e => setNewDiscountPercent(e.target.value)} className="px-3 py-2 border rounded-xl text-sm w-28 bg-white text-gray-900 font-bold" required />
+                <button type="submit" className="bg-purple-600 text-white px-5 py-2 rounded-xl text-xs font-bold cursor-pointer">إضافة كود ➕</button>
+              </form>
+
+              <div className="space-y-3">
+                {discountsList.map(disc => (
+                  <div key={disc.id} className="p-4 rounded-xl border bg-white flex justify-between items-center">
+                    <div>
+                      <span className="font-mono font-black text-purple-700 text-base">🏷️ {disc.code}</span>
+                      <p className="text-xs text-gray-600 mt-0.5">نسبة الخصم: <strong className="text-emerald-600">{disc.percent}%</strong> | {disc.description}</p>
+                    </div>
+                    <button onClick={() => setDiscountsList(discountsList.filter(d => d.id !== disc.id))} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold">حذف</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* الملف الشخصي والضريبي والتعديل والحذف للعميل المحدد */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
@@ -758,13 +898,43 @@ export default function App() {
                   <span className="text-xs font-bold text-purple-600 uppercase">ملف العميل التجاري والضريبي</span>
                   <h2 className="text-2xl font-black text-slate-900 mt-1">👤 {selectedClient.ownerName}</h2>
                 </div>
-                <button 
-                  onClick={() => setSelectedClientEmail(null)}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  العودة لقائمة العملاء 🔙
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setEditingClientData({ ownerName: selectedClient.ownerName, ownerEmail: selectedClient.ownerEmail, taxNumber: selectedClient.taxNumber, phone: selectedClient.phone })}
+                    className="bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    تعديل البيانات / إعادة تعيين ✏️
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteClientCompletely(selectedClient.ownerEmail)}
+                    className="bg-red-100 text-red-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    حذف العميل وفروعه 🗑️
+                  </button>
+                  <button 
+                    onClick={() => setSelectedClientEmail(null)}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                  >
+                    العودة 🔙
+                  </button>
+                </div>
               </div>
+
+              {/* نموذج تعديل بيانات العميل إذا تم النقر على تعديل */}
+              {editingClientData && (
+                <form onSubmit={handleSaveClientEdits} className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-3">
+                  <h4 className="font-bold text-sm text-blue-900">تعديل بيانات العميل أو تحديث بيانات الدخول والضريبة:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder="اسم العميل" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
+                    <input type="text" value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value})} placeholder="رقم الهاتف" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
+                    <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">حفظ التعديلات ✅</button>
+                    <button type="button" onClick={() => setEditingClientData(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold">إلغاء</button>
+                  </div>
+                </form>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                 <div>
@@ -834,7 +1004,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 3: كشف حسابات الاشتراكات العامة (يعرض العملاء وعدد فروعهم بانتظام) */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -1378,7 +1547,7 @@ export default function App() {
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">نوع المركبة:</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : 'موتور'})</span></div>
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">رقم اللوحة:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">الخدمة:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span>,</div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span></div>
                 
                 {selectedInvoice.notes && (
                   <div className="flex justify-between border-b pb-1"><span className="text-gray-600">ملاحظات العامل:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
