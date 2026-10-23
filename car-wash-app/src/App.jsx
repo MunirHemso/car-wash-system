@@ -48,19 +48,31 @@ export default function App() {
       address: 'إسكندرون، شارع أتاتورك', 
       code: 'NESR-1', 
       status: 'active',
-      subscriptionType: 'trial',
+      subscriptionType: 'monthly',
       subscriptionExpiry: '2026-11-01',
       discountPercent: 0,
       suspendedAt: null
     }
   ]);
 
-  // 🌟 باقات الأسعار مع تحديد الحد الأقصى لعدد الفروع المسموحة لكل باقة (maxShops)
+  // 🌟 باقات الأسعار مع دعم الإضافة، التعديل، والحذف
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 2 },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
   ]);
+
+  // حالات نموذج إضافة باقة جديدة
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanType, setNewPlanType] = useState('');
+  const [newPlanPrice, setNewPlanPrice] = useState('');
+  const [newPlanMaxShops, setNewPlanMaxShops] = useState('');
+
+  // حالات تعديل باقة موجودة
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [editPlanName, setEditPlanName] = useState('');
+  const [editPlanPrice, setEditPlanPrice] = useState('');
+  const [editPlanMaxShops, setEditPlanMaxShops] = useState('');
 
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
@@ -412,7 +424,6 @@ export default function App() {
     }
   };
 
-  // 🌟 تحديث اشتراك العميل: يطبق نوع الاشتراك وتاريخ الصلاحية على جميع فروعه بناءً على الحساب الأساسي
   const handleUpdateClientSubscription = async (clientEmail, planType) => {
     let expiryDate = '';
     const now = new Date();
@@ -425,6 +436,10 @@ export default function App() {
       expiryDate = now.toISOString().slice(0, 10);
     } else if (planType === 'lifetime') {
       expiryDate = 'مدى الحياة ♾️';
+    } else {
+      // للأعضاء الجدد أو الباقات المخصصة المضافة حديثاً
+      now.setDate(now.getDate() + 30);
+      expiryDate = now.toISOString().slice(0, 10);
     }
 
     try {
@@ -600,19 +615,18 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // 🌟 إدارة إضافة وتعديل الفروع مع التحقق الصارم من الحد الأقصى المسموح للفروع بناءً على نوع باقة الحساب الأساسي
+  // 🌟 إدارة الفروع مع التحقق الصارم من عدد الفروع المسموح به بناءً على باقة الحساب الأساسي
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
     const ownedShops = currentUser.ownedShops || [];
     
-    // التحقق من الحد الأقصى للفروع في حال كان فرع جديد وليس تعديل
     if (!editingShopId) {
       const firstShop = ownedShops[0];
       const subType = firstShop ? (firstShop.subscriptionType || 'trial') : 'trial';
       
-      let maxAllowedShops = 1; // الافتراضي للباقة التجريبية
+      let maxAllowedShops = 1; 
       if (subType === 'trial') {
         maxAllowedShops = 1; 
       } else {
@@ -634,7 +648,6 @@ export default function App() {
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
 
-      // مدة صلاحية الاشتراك تُحسب وتورث تلقائياً من الحساب الأساسي (المحل الأول أو الباقة الفعالة للعميل)
       const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
       const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
@@ -675,7 +688,7 @@ export default function App() {
       setEditingShopId(null);
       setSelectedShopId(shopId);
       
-      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وارتباط مدة صلاحيته بالحساب الأساسي! 🏪✨', 'success');
+      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وارتباط صلاحيته بالحساب الأساسي! 🏪✨', 'success');
     } catch (error) {
       showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
     }
@@ -778,6 +791,58 @@ export default function App() {
     } catch (e) { showToast('حدث خطأ أثناء حفظ المصروف', 'error'); }
   };
 
+  // 🌟 دوال إضافة، تعديل، وحذف باقات الأسعار من لوحة المبرمج
+  const handleAddPricingPlan = (e) => {
+    e.preventDefault();
+    if (!newPlanName || !newPlanPrice || !newPlanMaxShops) {
+      showToast('يرجى تعبئة جميع حقول الباقة الجديدة!', 'error');
+      return;
+    }
+    const planTypeKey = newPlanType ? newPlanType.toLowerCase().replace(/\s+/g, '_') : ('plan_' + Date.now());
+    const newPlanObj = {
+      id: Date.now(),
+      name: newPlanName,
+      type: planTypeKey,
+      price: Number(newPlanPrice),
+      currency: 'ليرة',
+      maxShops: Number(newPlanMaxShops)
+    };
+    setPricingPlans([...pricingPlans, newPlanObj]);
+    setNewPlanName('');
+    setNewPlanType('');
+    setNewPlanPrice('');
+    setNewPlanMaxShops('');
+    showToast('تم إضافة الباقة الجديدة بنجاح! 🌟', 'success');
+  };
+
+  const handleDeletePricingPlan = (planId) => {
+    if (pricingPlans.length <= 1) {
+      showToast('يجب أن تبقى باقة واحدة على الأقل في النظام!', 'error');
+      return;
+    }
+    if (!window.confirm('هل أنت متأكد من حذف هذه الباقة؟')) return;
+    setPricingPlans(pricingPlans.filter(p => p.id !== planId));
+    showToast('تم حذف الباقة بنجاح.', 'success');
+  };
+
+  const handleStartEditPlan = (plan) => {
+    setEditingPlanId(plan.id);
+    setEditPlanName(plan.name);
+    setEditPlanPrice(plan.price);
+    setEditPlanMaxShops(plan.maxShops);
+  };
+
+  const handleSaveEditPlan = (planId) => {
+    setPricingPlans(pricingPlans.map(p => p.id === planId ? {
+      ...p,
+      name: editPlanName,
+      price: Number(editPlanPrice),
+      maxShops: Number(editPlanMaxShops)
+    } : p));
+    setEditingPlanId(null);
+    showToast('تم تحديث بيانات الباقة بنجاح! ✅', 'success');
+  };
+
   const renderToastComponent = () => {
     if (!toast) return null;
     return (
@@ -860,7 +925,7 @@ export default function App() {
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Shield className="text-purple-400" size={24} />
-            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، والخصومات المباشرة)</span>
+            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، وباقات الأسعار)</span>
           </div>
           <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1">
             <LogOut size={14} /> خروج
@@ -878,7 +943,7 @@ export default function App() {
             ➕ إضافة عميل جديد
           </button>
           <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'pricingPlans' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            💰 باقات الأسعار وحدود الفروع
+            💰 إدارة الباقات والأسعار والفروع
           </button>
           <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'directDiscounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             🏷️ نظام الخصومات المباشرة
@@ -1049,55 +1114,151 @@ export default function App() {
             </div>
           )}
 
-          {/* 🌟 تبويب باقات الأسعار مع إمكانية تعديل سعر كل باقة والحد الأقصى للفروع المسموحة (maxShops) */}
+          {/* 🌟 تبويب إدارة باقات الأسعار المطور بالكامل (إضافة، تعديل، حذف) */}
           {programmerTab === 'pricingPlans' && (
-            <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
-              <div className="border-b pb-4">
-                <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وحدود الفروع المسموحة</h3>
-                <p className="text-xs text-gray-500">حدد أسعار الباقات وعدد الفروع المسموح إنشاؤها لكل باقة (مثلاً الباقة الشهرية تسمح بمحلين، السنوية لـ 5 فروع، إلخ)</p>
-              </div>
+            <div className="space-y-8 max-w-5xl mx-auto">
+              
+              {/* نموذج إضافة باقة جديدة */}
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
+                <div className="flex items-center gap-3 border-b pb-4">
+                  <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><Plus size={24} /></div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900">إضافة باقة اشتراك جديدة</h3>
+                    <p className="text-xs text-gray-500">أنشئ باقة جديدة وحدد سعرها والحد الأقصى للفروع المسموحة</p>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {pricingPlans.map(plan => (
-                  <div key={plan.id} className="p-5 border rounded-2xl bg-gray-50 flex flex-col justify-between space-y-4">
+                <form onSubmit={handleAddPricingPlan} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
-                      <p className="text-xl font-black text-purple-600 mt-1">{plan.price} {plan.currency}</p>
-                      <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">الحد الأقصى: {plan.maxShops} فروع</span>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">اسم الباقة *</label>
+                      <input 
+                        type="text" 
+                        placeholder="مثال: الباقة الذهبية" 
+                        value={newPlanName} 
+                        onChange={e => setNewPlanName(e.target.value)} 
+                        className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-semibold" 
+                        required 
+                      />
                     </div>
-                    
-                    <div className="space-y-2.5 pt-2 border-t">
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-600 mb-1">تعديل السعر ({plan.currency}):</label>
-                        <input 
-                          type="number" 
-                          value={plan.price} 
-                          onChange={e => {
-                            const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
-                            setPricingPlans(updated);
-                          }}
-                          className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-600 mb-1">الحد الأقصى للفروع المسموحة:</label>
-                        <input 
-                          type="number" 
-                          value={plan.maxShops} 
-                          onChange={e => {
-                            const updated = pricingPlans.map(p => p.id === plan.id ? {...p, maxShops: Number(e.target.value)} : p);
-                            setPricingPlans(updated);
-                          }}
-                          className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">معرف الباقة (الانجليزي -اختياري)</label>
+                      <input 
+                        type="text" 
+                        placeholder="مثال: gold_plan" 
+                        value={newPlanType} 
+                        onChange={e => setNewPlanType(e.target.value)} 
+                        className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-semibold font-mono" 
+                      />
                     </div>
                   </div>
-                ))}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">السعر (ليرة) *</label>
+                      <input 
+                        type="number" 
+                        placeholder="مثال: 7500" 
+                        value={newPlanPrice} 
+                        onChange={e => setNewPlanPrice(e.target.value)} 
+                        className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">الحد الأقصى لعدد الفروع المسموحة *</label>
+                      <input 
+                        type="number" 
+                        placeholder="مثال: 7" 
+                        value={newPlanMaxShops} 
+                        onChange={e => setNewPlanMaxShops(e.target.value)} 
+                        className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md transition">
+                    إضافة الباقة الجديدة للنظام 🌟
+                  </button>
+                </form>
               </div>
-              <div className="flex justify-end pt-2">
-                <button onClick={() => showToast('تم حفظ الأسعار وحدود الفروع بنجاح!', 'success')} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl text-xs font-bold cursor-pointer shadow-md">حفظ كافة الإعدادات والأسعار ✅</button>
+
+              {/* قائمة وتعديل الباقات الحالية */}
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6">
+                <div className="flex justify-between items-center border-b pb-4">
+                  <h3 className="font-black text-lg text-gray-900">💰 الباقات الحالية المتاحة ({pricingPlans.length}):</h3>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">تحكم كامل</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {pricingPlans.map(plan => (
+                    <div key={plan.id} className="p-5 border-2 rounded-2xl bg-slate-50 flex flex-col justify-between space-y-4 relative shadow-xs">
+                      {editingPlanId === plan.id ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">اسم الباقة:</label>
+                            <input 
+                              type="text" 
+                              value={editPlanName} 
+                              onChange={e => setEditPlanName(e.target.value)} 
+                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">السعر (ليرة):</label>
+                            <input 
+                              type="number" 
+                              value={editPlanPrice} 
+                              onChange={e => setEditPlanPrice(e.target.value)} 
+                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">الحد الأقصى للفروع:</label>
+                            <input 
+                              type="number" 
+                              value={editPlanMaxShops} 
+                              onChange={e => setEditPlanMaxShops(e.target.value)} 
+                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button onClick={() => handleSaveEditPlan(plan.id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold">حفظ ✅</button>
+                            <button onClick={() => setEditingPlanId(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-xl text-xs font-bold">إلغاء</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-start">
+                              <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
+                              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">{plan.type}</span>
+                            </div>
+                            <p className="text-2xl font-black text-purple-600 pt-1">{plan.price} {plan.currency}</p>
+                            <div className="pt-2">
+                              <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
+                                الحد الأقصى: {plan.maxShops} فروع مسموحة
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-3 border-t">
+                            <button onClick={() => handleStartEditPlan(plan)} className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                              <Edit3 size={13} /> تعديل
+                            </button>
+                            <button onClick={() => handleDeletePricingPlan(plan.id)} className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                              <Trash2 size={13} /> حذف
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
+
             </div>
           )}
 
@@ -1226,16 +1387,12 @@ export default function App() {
                   <h4 className="font-bold text-sm">تجديد اشتراكات جميع فروع هذا العميل دفعة واحدة (تُحتسب صلاحيتها على الحساب الأساسي):</h4>
                   <p className="text-xs text-gray-300">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'monthly')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد شهري للكل 🗓️
-                  </button>
-                  <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'yearly')} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد سنوي للكل 📅
-                  </button>
-                  <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'lifetime')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    مدى الحياة للكل ♾️
-                  </button>
+                <div className="flex gap-2 flex-wrap">
+                  {pricingPlans.map(plan => (
+                    <button key={plan.id} onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, plan.type)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
+                      تجديد ({plan.name}) 📅
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -2015,7 +2172,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= 🌟 واجهة إدارة وإضافة الفروع المطورة باحترافية وتصميم عصري (إضافة، تعديل، حذف) ================= */}
         {activeTab === 'addShop' && (
           <div className="space-y-8 max-w-4xl mx-auto py-2">
             
