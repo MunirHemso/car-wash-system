@@ -41,8 +41,8 @@ export default function App() {
       address: 'إسكندرون، شارع أتاتورك', 
       code: 'NESR-1', 
       status: 'active',
-      subscriptionType: 'monthly',
-      subscriptionExpiry: '2026-12-31',
+      subscriptionType: 'trial',
+      subscriptionExpiry: '2026-11-01',
       suspendedAt: null
     }
   ]);
@@ -140,11 +140,10 @@ export default function App() {
   const [selectedShopId, setSelectedShopId] = useState(1);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // حالات خاصة لوحة المبرمج
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
-  // حقول إضافة عميل جديد من قبل المبرمج
+  // حقول إضافة عميل جديد
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -273,7 +272,7 @@ export default function App() {
     }
   };
 
-  // 🚀 وظيفة المبرمج لإضافة عميل جديد (مع فرعه الأول)
+  // 🚀 إضافة عميل جديد مع فترة تجريبية 7 أيام تلقائياً
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
@@ -282,8 +281,8 @@ export default function App() {
 
     try {
       const shopId = Date.now();
-      const defaultExpiry = new Date();
-      defaultExpiry.setDate(defaultExpiry.getDate() + 30); // 30 يوماً تجريبي/شهري
+      const trialExpiry = new Date();
+      trialExpiry.setDate(trialExpiry.getDate() + 7); // فترة تجريبية 7 أيام منذ الإنشاء
 
       const newClientShopObj = {
         id: shopId,
@@ -297,8 +296,8 @@ export default function App() {
         address: newClientAddress || 'العنوان لم يحدد',
         code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
         status: 'active',
-        subscriptionType: 'monthly',
-        subscriptionExpiry: defaultExpiry.toISOString().slice(0, 10),
+        subscriptionType: 'trial',
+        subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
         suspendedAt: null
       };
 
@@ -313,7 +312,7 @@ export default function App() {
       setNewClientWorkerPass('');
       setNewClientAddress('');
 
-      alert('تم إضافة العميل الجديد وفرعه الأول بنجاح تام في النظام! 🌟✨');
+      alert('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳');
       setProgrammerTab('clients');
     } catch (error) {
       alert('حدث خطأ أثناء إضافة العميل: ' + error.message);
@@ -401,24 +400,6 @@ export default function App() {
     } catch (error) {}
   };
 
-  const handleSettleDebtAction = async (shopId, debtObj) => {
-    try {
-      await deleteDoc(doc(db, "shops", String(shopId), "debts", String(debtObj.id)));
-      await addDoc(collection(db, "shops", String(shopId), "debtRepayments"), {
-        debtorName: debtObj.debtorName,
-        amount: debtObj.amount,
-        method: repayMethod,
-        notes: repayNotes || 'تسديد دين سابق',
-        date: repayDate
-      });
-      setSettlingDebtId(null);
-      setRepayNotes('');
-      alert(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`);
-    } catch (error) {
-      alert('حدث خطأ أثناء تسديد الدين.');
-    }
-  };
-
   const handleImageUpload = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -500,14 +481,15 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
+  // 🚀 إضافة فرع جديد من قبل صاحب المحل مع 7 أيام تجريبية تلقائياً
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
 
     try {
       const shopId = Date.now();
-      const defaultExpiry = new Date();
-      defaultExpiry.setDate(defaultExpiry.getDate() + 30);
+      const trialExpiry = new Date();
+      trialExpiry.setDate(trialExpiry.getDate() + 7); // فترة تجريبية 7 أيام للفرع الجديد أيضاً
 
       const shopObj = {
         id: shopId,
@@ -521,8 +503,8 @@ export default function App() {
         address: newShopAddress || 'العنوان لم يحدد',
         code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
         status: 'active',
-        subscriptionType: 'monthly',
-        subscriptionExpiry: defaultExpiry.toISOString().slice(0, 10),
+        subscriptionType: 'trial',
+        subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
         suspendedAt: null
       };
 
@@ -541,7 +523,7 @@ export default function App() {
       setNewShopAddress('');
       setSelectedShopId(shopId);
       
-      alert('تم إضافة الفرع الجديد وربطه بحسابك سحابياً بنجاح تام! 🏪✨');
+      alert('تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨');
       setActiveTab('dashboard');
     } catch (error) {
       alert('حدث خطأ أثناء الحفظ: ' + error.message);
@@ -605,7 +587,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء الجدد، الاشتراكات والملفات الضريبية) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (تجميع العملاء بعرض كم فرع لديهم وكشف الحسابات العام للعملاء) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -675,7 +657,7 @@ export default function App() {
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <UsersRound className="text-purple-600" size={22} /> قائمة عملاء المنصة (اضغط على العميل لعرض ملفه وفروعه وتجديد اشتراكه)
+                <UsersRound className="text-purple-600" size={22} /> قائمة عملاء المنصة (أصحاب المحلات وعدد فروعهم)
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -686,8 +668,8 @@ export default function App() {
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
                           <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
-                          <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-xl">
-                            {client.shopsList.length} فروع مغاسل
+                          <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-xl shadow-xs">
+                            🏢 {client.shopsList.length} فروع مغاسل
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">📧 الإيميل: {client.ownerEmail}</p>
@@ -711,14 +693,14 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 2: إضافة عميل جديد للنظام */}
+          {/* تبويب 2: إضافة عميل جديد للنظام مع 7 أيام تجريبية */}
           {programmerTab === 'addClient' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-2xl mx-auto space-y-6">
               <div className="flex items-center gap-3 border-b pb-4">
                 <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><UserPlus size={24} /></div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">إضافة عميل جديد للنظام (صاحب مغاسل جديد)</h3>
-                  <p className="text-xs text-gray-500">أدخل بيانات العميل الشخصية والضريبية وفرعه الأول لإنشاء حساب مستقل له</p>
+                  <p className="text-xs text-gray-500">سيحصل العميل تلقائياً على فترة تجريبية مجانية لمدة 7 أيام منذ لحظة الإنشاء</p>
                 </div>
               </div>
 
@@ -763,7 +745,7 @@ export default function App() {
                   <input type="text" placeholder="عنوان الفرع (المنطقة والشارع)" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                 </div>
 
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل الجديد وإنشاء حسابه 🚀</button>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل الجديد ومنحه 7 أيام تجريبية 🚀</button>
               </form>
             </div>
           )}
@@ -831,7 +813,7 @@ export default function App() {
                       <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: {shop.phone}</p>
                       <p className="text-xs text-gray-600">👷‍♂️ إيميل العامل: {shop.workerEmail} (باسورد: {shop.workerPass})</p>
                       <div className="mt-1 text-xs font-bold text-blue-600">
-                        الاشتراك: {shop.subscriptionType || 'شهري'} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
+                        الاشتراك: {shop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : shop.subscriptionType} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
                       </div>
                     </div>
 
@@ -852,38 +834,45 @@ export default function App() {
             </div>
           )}
 
+          {/* تبويب 3: كشف حسابات الاشتراكات العامة (يعرض العملاء وعدد فروعهم بانتظام) */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                 <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات والوضع المالي للمنصة
               </h3>
-              <p className="text-xs text-gray-500">سجل بجميع الفروع وحالة اشتراكاتها وتواريخ انتهائها لتتبع إيراداتك بانتظام.</p>
+              <p className="text-xs text-gray-500">سجل بجميع العملاء (أصحاب المحلات) وعدد فروعهم وحالة اشتراكاتهم لتتبع إيراداتك بانتظام.</p>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-sm">
                   <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                     <tr>
-                      <th className="p-3">اسم الفرع / المحل</th>
                       <th className="p-3">صاحب المحل (العميل)</th>
-                      <th className="p-3">نوع الاشتراك</th>
+                      <th className="p-3">الرقم الضريبي</th>
+                      <th className="p-3">عدد الفروع المملوكة</th>
+                      <th className="p-3">نوع الاشتراك العام</th>
                       <th className="p-3">تاريخ انتهاء الاشتراك</th>
-                      <th className="p-3">حالة الفرع</th>
+                      <th className="p-3">الحالة العامة</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {shops.map(s => (
-                      <tr key={s.id} className="hover:bg-gray-50">
-                        <td className="p-3 font-bold text-slate-900">{s.name}</td>
-                        <td className="p-3">{s.owner} ({s.ownerEmail})</td>
-                        <td className="p-3 font-semibold text-blue-600">{s.subscriptionType === 'yearly' ? 'سنوي 📅' : s.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
-                        <td className="p-3 font-mono">{s.subscriptionExpiry || 'غير محدد'}</td>
-                        <td className="p-3">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                            {s.status === 'active' ? 'نشط' : 'منتهي / موقوف'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {clientsList.map((client, idx) => {
+                      const firstShop = client.shopsList[0] || {};
+                      const hasActiveShop = client.shopsList.some(s => s.status === 'active');
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
+                          <td className="p-3 font-mono">{client.taxNumber}</td>
+                          <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
+                          <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : firstShop.subscriptionType === 'yearly' ? 'سنوي 📅' : firstShop.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
+                          <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
+                          <td className="p-3">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {hasActiveShop ? 'نشط' : 'منتهي / موقوف'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1242,7 +1231,7 @@ export default function App() {
                 <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><Building size={24} /></div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">إضافة فرع جديد لمجموعتك</h3>
-                  <p className="text-xs text-gray-500">سيتم ربط هذا الفرع تلقائياً برقمك الضريبي وبريدك وإدارتك</p>
+                  <p className="text-xs text-gray-500">سيحصل الفرع الجديد على فترة تجريبية مجانية 7 أيام تلقائياً</p>
                 </div>
               </div>
 
@@ -1389,7 +1378,7 @@ export default function App() {
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">نوع المركبة:</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : 'موتور'})</span></div>
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">رقم اللوحة:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">الخدمة:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span>,</div>
                 
                 {selectedInvoice.notes && (
                   <div className="flex justify-between border-b pb-1"><span className="text-gray-600">ملاحظات العامل:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
