@@ -55,7 +55,7 @@ export default function App() {
     }
   ]);
 
-  // باقات الأسعار مع تحديد الحد الأقصى للفروع المرتبطة باشتراك العميل (صاحب المحل)
+  // باقات الأسعار مع الحدود القصوى للفروع (maxShops)
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية (محل واحد)', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 1 },
     { id: 2, name: 'الباقة السنوية (حتى 5 فروع)', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
@@ -85,6 +85,14 @@ export default function App() {
     setTimeout(() => {
       setToast(prev => (prev?.message === message ? null : prev));
     }, 10000);
+  };
+
+  // وظيفة التحقق من صحة رقم الهاتف التركي (مثل 05XXXXXXXXX أو +905XXXXXXXXX)
+  const validateTurkishPhone = (phone) => {
+    if (!phone) return true; // إذا كان اختيارياً
+    const cleanPhone = phone.replace(/\s+/g, '');
+    const turkishPhoneRegex = /^(\+90|0)?5\d{9}$/;
+    return turkishPhoneRegex.test(cleanPhone);
   };
 
   useEffect(() => {
@@ -317,6 +325,11 @@ export default function App() {
       return;
     }
 
+    if (newClientPhone && !validateTurkishPhone(newClientPhone)) {
+      showToast('رقم الهاتف المدخل غير صحيح! يرجى إدخال رقم هاتف تركي صالح (مثال: 05XXXXXXXXX)', 'error');
+      return;
+    }
+
     try {
       const shopId = Date.now();
       const trialExpiry = new Date();
@@ -383,6 +396,11 @@ export default function App() {
   const handleSaveClientEdits = async (e) => {
     e.preventDefault();
     if (!editingClientData) return;
+
+    if (editingClientData.phone && !validateTurkishPhone(editingClientData.phone)) {
+      showToast('رقم الهاتف المدخل غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      return;
+    }
 
     try {
       const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === editingClientData.ownerEmail.toLowerCase());
@@ -612,19 +630,20 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // 🌟 التحقق الصارم من اشتراك العميل (صاحب المحل) وحدود فروع باقته قبل السماح بإضافة فرع جديد
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
-    // جلب جميع فروع هذا العميل (صاحب المحل الحالي) من الحالة العامة
-    const ownerEmail = currentUser.email.toLowerCase();
-    const clientOwnedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === ownerEmail);
+    if (newShopPhone && !validateTurkishPhone(newShopPhone)) {
+      showToast('رقم هاتف الفرع غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      return;
+    }
+
+    const ownedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === currentUser.email.toLowerCase());
     
     if (!editingShopId) {
-      // تحديد نوع الباقة النشطة للعميل (من أول محل أو الحساب الأساسي)
-      const primaryShop = clientOwnedShops[0];
-      const subType = primaryShop ? (primaryShop.subscriptionType || 'trial') : 'trial';
+      const firstShop = ownedShops[0];
+      const subType = firstShop ? (firstShop.subscriptionType || 'trial') : 'trial';
       
       let maxAllowedShops = 1; 
       if (subType === 'trial') {
@@ -634,24 +653,22 @@ export default function App() {
         maxAllowedShops = matchedPlan ? matchedPlan.maxShops : 1;
       }
 
-      // منع العميل من تجاوز الحد الأقصى المسموح لعدد الفروع في باقته
-      if (clientOwnedShops.length >= maxAllowedShops) {
-        showToast(`عذراً، اشتراكك الحالي (${subType}) يمنحك حق إنشاء ${maxAllowedShops} فرع كحد أقصى. لقد وصلت للحد الأقصى! يرجى مراجعة الإدارة لترقية باقتك.`, 'error');
+      if (ownedShops.length >= maxAllowedShops) {
+        showToast(`عذراً، باقتك الحالية (${subType}) تمنحك حق إنشاء ${maxAllowedShops} فرع كحد أقصى. يرجى ترقية الباقة لدى الإدارة!`, 'error');
         return;
       }
     }
 
     try {
       const shopId = editingShopId ? editingShopId : Date.now();
-      const primaryShop = clientOwnedShops[0] || {};
+      const firstShop = ownedShops[0] || {};
       const trialExpiry = new Date();
       trialExpiry.setDate(trialExpiry.getDate() + 7);
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
 
-      // توريث نوع الاشتراك ومدة الصلاحية الخاصة بالعميل (صاحب المحل)
-      const baseSubscriptionType = primaryShop.subscriptionType || existingShop.subscriptionType || 'trial';
-      const baseSubscriptionExpiry = primaryShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
+      const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
+      const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
       const shopObj = {
         id: Number(shopId),
@@ -674,8 +691,8 @@ export default function App() {
       await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
 
       const updatedOwnedShops = editingShopId 
-        ? clientOwnedShops.map(s => s.id === Number(shopId) ? shopObj : s)
-        : [...clientOwnedShops, shopObj];
+        ? ownedShops.map(s => s.id === Number(shopId) ? shopObj : s)
+        : [...ownedShops, shopObj];
 
       setCurrentUser(prev => ({
         ...prev,
@@ -749,6 +766,11 @@ export default function App() {
     if (!plateNumber || !price || !currentUser) return showToast('أدخل اللوحة والسعر!', 'error');
     const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
     if (!shopId || shopId === 'all') return showToast('اختر محلاً محدداً', 'error');
+
+    if (debtorPhone && !validateTurkishPhone(debtorPhone)) {
+      showToast('رقم هاتف الزبون المدين غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      return;
+    }
 
     try {
       const todayDateStr = new Date().toISOString().slice(0, 10);
@@ -880,10 +902,29 @@ export default function App() {
           <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
           <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
           <form onSubmit={handleFirebaseLogin} className="space-y-4">
-            <div><label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label><input type="email" value={inputEmail} onChange={e => setInputEmail(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" required /></div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label>
+              <input 
+                type="email" 
+                value={inputEmail} 
+                onChange={e => setInputEmail(e.target.value)} 
+                onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني بشكل صحيح')}
+                onInput={e => e.target.setCustomValidity('')}
+                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
+                required 
+              />
+            </div>
             <div>
               <div className="flex justify-between items-center mb-1"><label className="block text-xs font-bold text-gray-600">كلمة المرور</label><button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600">نسيت كلمة المرور؟</button></div>
-              <input type="password" value={inputPassword} onChange={e => setInputPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" required />
+              <input 
+                type="password" 
+                value={inputPassword} 
+                onChange={e => setInputPassword(e.target.value)} 
+                onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة المرور المطلوبة')}
+                onInput={e => e.target.setCustomValidity('')}
+                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
+                required 
+              />
             </div>
             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">تسجيل الدخول الآمن 🚀</button>
           </form>
@@ -1088,37 +1129,37 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">اسم العميل الكامل *</label>
-                    <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم العميل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني (Gmail) *</label>
-                    <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف</label>
-                    <input type="text" placeholder="+90 500 000 0000" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف (التركي)</label>
+                    <input type="text" dir="ltr" placeholder="05XXXXXXXXX" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-right" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي</label>
-                    <input type="text" placeholder="الرقم الضريبي للمؤسسة" value={newClientTax} onChange={e => setNewClientTax(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                    <input type="text" value={newClientTax} onChange={e => setNewClientTax(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                   </div>
                 </div>
 
                 <div className="border-t pt-4 space-y-3">
                   <h4 className="font-bold text-sm text-purple-700">تفاصيل الفرع الأول:</h4>
-                  <input type="text" placeholder="اسم الفرع الأول *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  <input type="text" placeholder="اسم الفرع الأول *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع الأول')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">إيميل العامل *</label>
-                      <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                      <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">كلمة سر العامل *</label>
-                      <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                      <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة سر العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                   </div>
 
@@ -1151,6 +1192,8 @@ export default function App() {
                         placeholder="مثال: الباقة الذهبية" 
                         value={newPlanName} 
                         onChange={e => setNewPlanName(e.target.value)} 
+                        onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الباقة')}
+                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-semibold" 
                         required 
                       />
@@ -1175,6 +1218,8 @@ export default function App() {
                         placeholder="مثال: 7500" 
                         value={newPlanPrice} 
                         onChange={e => setNewPlanPrice(e.target.value)} 
+                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد السعر')}
+                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
                         required 
                       />
@@ -1186,6 +1231,8 @@ export default function App() {
                         placeholder="مثال: 7" 
                         value={newPlanMaxShops} 
                         onChange={e => setNewPlanMaxShops(e.target.value)} 
+                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد الحد الأقصى للفروع')}
+                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
                         required 
                       />
@@ -1211,30 +1258,15 @@ export default function App() {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-[11px] font-bold text-gray-600 mb-1">اسم الباقة:</label>
-                            <input 
-                              type="text" 
-                              value={editPlanName} 
-                              onChange={e => setEditPlanName(e.target.value)} 
-                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                            />
+                            <input type="text" value={editPlanName} onChange={e => setEditPlanName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div>
                             <label className="block text-[11px] font-bold text-gray-600 mb-1">السعر (ليرة):</label>
-                            <input 
-                              type="number" 
-                              value={editPlanPrice} 
-                              onChange={e => setEditPlanPrice(e.target.value)} 
-                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                            />
+                            <input type="number" value={editPlanPrice} onChange={e => setEditPlanPrice(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div>
                             <label className="block text-[11px] font-bold text-gray-600 mb-1">الحد الأقصى للفروع:</label>
-                            <input 
-                              type="number" 
-                              value={editPlanMaxShops} 
-                              onChange={e => setEditPlanMaxShops(e.target.value)} 
-                              className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                            />
+                            <input type="number" value={editPlanMaxShops} onChange={e => setEditPlanMaxShops(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div className="flex gap-2 pt-2">
                             <button onClick={() => handleSaveEditPlan(plan.id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold">حفظ ✅</button>
@@ -1373,7 +1405,7 @@ export default function App() {
                   <h4 className="font-bold text-sm text-blue-900">تعديل بيانات العميل أو تحديث بيانات الدخول والضريبة:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder="اسم العميل" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
-                    <input type="text" value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value})} placeholder="رقم الهاتف" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
+                    <input type="text" dir="ltr" value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-right" />
                     <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -1386,7 +1418,7 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                 <div>
                   <span className="text-xs text-gray-500 block">رقم الهاتف</span>
-                  <strong className="text-sm text-slate-900">{selectedClient.phone}</strong>
+                  <strong className="text-sm text-slate-900" dir="ltr">{selectedClient.phone}</strong>
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block">المعرف / الرقم الضريبي</span>
@@ -1396,13 +1428,13 @@ export default function App() {
 
               <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap justify-between items-center gap-4">
                 <div>
-                  <h4 className="font-bold text-sm">تجديد اشتراكات جميع فروع هذا العميل دفعة واحدة (تُحتسب صلاحيتها على الحساب الأساسي):</h4>
+                  <h4 className="font-bold text-sm">منح اشتراك الحساب الأساسي (يُطبق على العميل وصلاحية فروعه):</h4>
                   <p className="text-xs text-gray-300">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {pricingPlans.map(plan => (
                     <button key={plan.id} onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, plan.type)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                      تجديد ({plan.name}) 📅
+                      منح ({plan.name}) 📅
                     </button>
                   ))}
                 </div>
@@ -1419,9 +1451,9 @@ export default function App() {
                           {shop.status === 'active' ? 'نشط' : 'معلق / مؤرشف'}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: {shop.phone}</p>
+                      <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: <span dir="ltr">{shop.phone}</span></p>
                       <div className="mt-1 text-xs font-bold text-blue-600">
-                        الاشتراك: {shop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : shop.subscriptionType} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
+                        الاشتراك الأساسي الممنوح للعميل: {shop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : shop.subscriptionType} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
                       </div>
                     </div>
 
@@ -1611,6 +1643,8 @@ export default function App() {
                         placeholder="ابحث بالماركة أو الموديل..." 
                         value={carModel} 
                         onChange={e => setCarModel(e.target.value)} 
+                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد موديل السيارة')}
+                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900 font-semibold outline-none focus:ring-2 focus:ring-blue-500" 
                         required 
                       />
@@ -1622,7 +1656,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
+                  <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم اللوحة')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
                   
                   <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
                     <option>غسيل خارجي فقط</option>
@@ -1638,7 +1672,7 @@ export default function App() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">السعر (تحديد يدوي) *</label>
-                    <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
+                    <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال السعر المطلوب')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
                   </div>
 
                   <div>
@@ -1690,8 +1724,8 @@ export default function App() {
                   {payMethod === 'دين' && (
                     <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
                       <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
-                      <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                      <input type="text" placeholder="رقم هاتف الزبون *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                      <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الزبون')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                      <input type="text" dir="ltr" placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-right" required />
                     </div>
                   )}
 
@@ -1712,8 +1746,8 @@ export default function App() {
                   <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
                     <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
                   </select>
-                  <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                  <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
                   <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
                   <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
                 </form>
@@ -1732,7 +1766,7 @@ export default function App() {
                     {shopDebts.map(d => (
                       <div key={d.id} className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-sm">
                         <div>
-                          <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName} ({d.phone})</span>
+                          <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName} (<span dir="ltr">{d.phone}</span>)</span>
                           <p className="text-xs text-gray-600">الخدمة: {d.service} | المبلغ: <strong className="text-red-600">{d.amount} ليرة</strong></p>
                           <span className="text-[10px] text-gray-400">تاريخ الدين: {d.date}</span>
                         </div>
@@ -1932,7 +1966,7 @@ export default function App() {
         </div>
       )}
 
-      {/* الهيدر العلوي الجديد والمحدث للمالك */}
+      {/* الهيدر العلوي الجديد والمنسق لصاحب المحل */}
       <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
@@ -1968,7 +2002,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* شريط التنقل (Tabs) بتصميم بطاقات الأزرار المنفصلة (Pill Tabs) */}
+      {/* شريط التنقل الجديد بصيغة أزرار Pill Tabs منسقة */}
       <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
         <button 
           onClick={() => setActiveTab('dashboard')} 
@@ -2010,7 +2044,7 @@ export default function App() {
                   <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">هذا الفرع موقوف / انتهى اشتراكه. يرجى التواصل مع الإدارة للتجديد!</span>
                 )}
                 
-                {/* 🌟 عداد الوقت المتبقي للباقة (أيام وساعات) يظهر لصاحب المحل فقط */}
+                {/* عداد الوقت المتبقي للباقة (أيام وساعات) للعميل الأساسي */}
                 {currentShop && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15 shadow-inner">
                     <span>⏳ عداد باقتك (الحساب الأساسي):</span>
@@ -2063,6 +2097,8 @@ export default function App() {
                       placeholder="عنوان التنبيه..." 
                       value={ownerNoticeTitle} 
                       onChange={e => setOwnerNoticeTitle(e.target.value)} 
+                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان التنبيه')}
+                      onInput={e => e.target.setCustomValidity('')}
                       className="px-3 py-2 border rounded-xl text-sm text-gray-900 bg-white" 
                       required
                     />
@@ -2078,6 +2114,8 @@ export default function App() {
                     placeholder="نص التنبيه والملاحظة الموجهة للعامل..." 
                     value={ownerNoticeText} 
                     onChange={e => setOwnerNoticeText(e.target.value)} 
+                    onInvalid={e => e.target.setCustomValidity('يرجى كتابة نص التنبيه')}
+                    onInput={e => e.target.setCustomValidity('')}
                     className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900 bg-white" 
                     required
                   />
@@ -2136,7 +2174,7 @@ export default function App() {
                       <div key={d.id} className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center text-sm">
                         <div>
                           <span className="font-bold text-gray-900">🏪 {d.shopName} | 👤 الزبون: {d.debtorName}</span>
-                          <p className="text-xs text-gray-600">📞 الهاتف: {d.phone} | الخدمة: {d.service} (التاريخ: {d.date})</p>
+                          <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{d.phone}</span> | الخدمة: {d.service} (التاريخ: {d.date})</p>
                         </div>
                         <span className="font-black text-red-600 text-base">{d.amount} ليرة</span>
                       </div>
@@ -2154,8 +2192,8 @@ export default function App() {
                     <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
                       <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
                     </select>
-                    <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                    <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى تحديد مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
                     <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
                     <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
                   </form>
@@ -2276,6 +2314,8 @@ export default function App() {
                     placeholder="مثال: مغسلة النسر - فرع الميناء" 
                     value={newShopName} 
                     onChange={e => setNewShopName(e.target.value)} 
+                    onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع')}
+                    onInput={e => e.target.setCustomValidity('')}
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                     required 
                   />
@@ -2289,6 +2329,8 @@ export default function App() {
                       placeholder="worker@gmail.com" 
                       value={newWorkerEmail} 
                       onChange={e => setNewWorkerEmail(e.target.value)} 
+                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل الإلكتروني')}
+                      onInput={e => e.target.setCustomValidity('')}
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                       required 
                     />
@@ -2300,6 +2342,8 @@ export default function App() {
                       placeholder="••••••••" 
                       value={newWorkerPass} 
                       onChange={e => setNewWorkerPass(e.target.value)} 
+                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة سر العامل')}
+                      onInput={e => e.target.setCustomValidity('')}
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                       required 
                     />
@@ -2311,10 +2355,11 @@ export default function App() {
                     <label className="block text-xs font-bold text-gray-700 mb-1.5">رقم هاتف الفرع</label>
                     <input 
                       type="text" 
-                      placeholder="+90 531 000 0000" 
+                      dir="ltr"
+                      placeholder="05XXXXXXXXX" 
                       value={newShopPhone} 
                       onChange={e => setNewShopPhone(e.target.value)} 
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold text-right" 
                     />
                   </div>
                   <div>
@@ -2362,7 +2407,7 @@ export default function App() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                        <MapPin size={13} className="text-red-500" /> العنوان: {s.address} | <Phone size={13} className="text-blue-500" /> الهاتف: {s.phone}
+                        <MapPin size={13} className="text-red-500" /> العنوان: {s.address} | <Phone size={13} className="text-blue-500" /> الهاتف: <span dir="ltr">{s.phone}</span>
                       </p>
                       <p className="text-xs text-gray-500 flex items-center gap-1.5">
                         <Mail size={13} className="text-purple-500" /> إيميل العامل: <strong className="text-slate-800 font-mono">{s.workerEmail}</strong>
@@ -2395,7 +2440,7 @@ export default function App() {
           <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6" id="accountStatement">
             <div className="text-center border-b pb-4 space-y-1">
               <h2 className="text-2xl font-black text-gray-900">🏪 {currentShop?.name}</h2>
-              <p className="text-xs text-gray-600">كشف الحسابات المالي والتقارير والديون | {currentShop?.address} | هاتف: {currentShop?.phone}</p>
+              <p className="text-xs text-gray-600">كشف الحسابات المالي والتقارير والديون | {currentShop?.address} | هاتف: <span dir="ltr">{currentShop?.phone}</span></p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
@@ -2441,7 +2486,7 @@ export default function App() {
                     <div key={d.id} className="p-3 bg-white rounded-xl shadow-xs flex justify-between items-center text-sm border border-amber-100">
                       <div>
                         <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName}</span>
-                        <p className="text-xs text-gray-700">📞 الهاتف: {d.phone} | الخدمة: {d.service}</p>
+                        <p className="text-xs text-gray-700">📞 الهاتف: <span dir="ltr">{d.phone}</span> | الخدمة: {d.service}</p>
                         <span className="text-[10px] text-gray-500">التاريخ: {d.date} (بواسطة: {d.addedBy})</span>
                       </div>
                       <span className="text-base font-black text-red-600">{d.amount} ليرة</span>
@@ -2495,7 +2540,7 @@ export default function App() {
             <div className="space-y-4 text-right">
               <div className="text-center border-b pb-3">
                 <h2 className="text-xl font-black text-gray-900">🏪 {selectedInvoice.shopName}</h2>
-                <p className="text-xs text-gray-600">{selectedInvoice.shopInfo?.address || 'إسكندرون'} | هاتف: {selectedInvoice.shopInfo?.phone || '+90...'}</p>
+                <p className="text-xs text-gray-600">{selectedInvoice.shopInfo?.address || 'إسكندرون'} | هاتف: <span dir="ltr">{selectedInvoice.shopInfo?.phone || '+90...'}</span></p>
                 <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">فاتورة غسيل مركبات رسمية</span>
               </div>
               <div className="space-y-2 text-sm text-gray-800 font-medium">
