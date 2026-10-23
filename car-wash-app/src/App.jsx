@@ -55,10 +55,11 @@ export default function App() {
     }
   ]);
 
+  // 🌟 باقات الأسعار مع تحديد الحد الأقصى لعدد الفروع المسموحة لكل باقة (maxShops)
   const [pricingPlans, setPricingPlans] = useState([
-    { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
-    { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
-    { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة' }
+    { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 2 },
+    { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
+    { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
   ]);
 
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
@@ -182,7 +183,6 @@ export default function App() {
 
   const [editingClientData, setEditingClientData] = useState(null);
 
-  // 🌟 حالات إضافة وتعديل الفروع الخاصة بالمالك
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
   const [newWorkerPass, setNewWorkerPass] = useState('');
@@ -412,6 +412,7 @@ export default function App() {
     }
   };
 
+  // 🌟 تحديث اشتراك العميل: يطبق نوع الاشتراك وتاريخ الصلاحية على جميع فروعه بناءً على الحساب الأساسي
   const handleUpdateClientSubscription = async (clientEmail, planType) => {
     let expiryDate = '';
     const now = new Date();
@@ -599,17 +600,43 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // 🌟 وظيفة إضافة أو تحديث الفرع للمالك مع دعم الحذف والتعديل المباشر
+  // 🌟 إدارة إضافة وتعديل الفروع مع التحقق الصارم من الحد الأقصى المسموح للفروع بناءً على نوع باقة الحساب الأساسي
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
+    const ownedShops = currentUser.ownedShops || [];
+    
+    // التحقق من الحد الأقصى للفروع في حال كان فرع جديد وليس تعديل
+    if (!editingShopId) {
+      const firstShop = ownedShops[0];
+      const subType = firstShop ? (firstShop.subscriptionType || 'trial') : 'trial';
+      
+      let maxAllowedShops = 1; // الافتراضي للباقة التجريبية
+      if (subType === 'trial') {
+        maxAllowedShops = 1; 
+      } else {
+        const matchedPlan = pricingPlans.find(p => p.type === subType);
+        maxAllowedShops = matchedPlan ? matchedPlan.maxShops : 2;
+      }
+
+      if (ownedShops.length >= maxAllowedShops) {
+        showToast(`عذراً، باقتك الحالية (${subType}) تسمح بإنشاء ${maxAllowedShops} فروع كحد أقصى. يرجى ترقية الباقة لدى الإدارة لزيادة عدد الفروع!`, 'error');
+        return;
+      }
+    }
+
     try {
       const shopId = editingShopId ? editingShopId : Date.now();
+      const firstShop = ownedShops[0] || {};
       const trialExpiry = new Date();
       trialExpiry.setDate(trialExpiry.getDate() + 7);
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
+
+      // مدة صلاحية الاشتراك تُحسب وتورث تلقائياً من الحساب الأساسي (المحل الأول أو الباقة الفعالة للعميل)
+      const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
+      const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
       const shopObj = {
         id: Number(shopId),
@@ -623,8 +650,8 @@ export default function App() {
         address: newShopAddress || 'العنوان لم يحدد',
         code: existingShop.code || ('SHOP-' + Math.floor(100 + Math.random() * 900)),
         status: existingShop.status || 'active',
-        subscriptionType: existingShop.subscriptionType || 'trial',
-        subscriptionExpiry: existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10),
+        subscriptionType: baseSubscriptionType,
+        subscriptionExpiry: baseSubscriptionExpiry,
         discountPercent: existingShop.discountPercent || 0,
         suspendedAt: existingShop.suspendedAt || null
       };
@@ -632,8 +659,8 @@ export default function App() {
       await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
 
       const updatedOwnedShops = editingShopId 
-        ? (currentUser.ownedShops || []).map(s => s.id === Number(shopId) ? shopObj : s)
-        : [...(currentUser.ownedShops || []), shopObj];
+        ? ownedShops.map(s => s.id === Number(shopId) ? shopObj : s)
+        : [...ownedShops, shopObj];
 
       setCurrentUser(prev => ({
         ...prev,
@@ -648,7 +675,7 @@ export default function App() {
       setEditingShopId(null);
       setSelectedShopId(shopId);
       
-      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨', 'success');
+      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وارتباط مدة صلاحيته بالحساب الأساسي! 🏪✨', 'success');
     } catch (error) {
       showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
     }
@@ -851,7 +878,7 @@ export default function App() {
             ➕ إضافة عميل جديد
           </button>
           <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'pricingPlans' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            💰 باقات الأسعار
+            💰 باقات الأسعار وحدود الفروع
           </button>
           <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'directDiscounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             🏷️ نظام الخصومات المباشرة
@@ -1022,30 +1049,54 @@ export default function App() {
             </div>
           )}
 
+          {/* 🌟 تبويب باقات الأسعار مع إمكانية تعديل سعر كل باقة والحد الأقصى للفروع المسموحة (maxShops) */}
           {programmerTab === 'pricingPlans' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
-              <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
+              <div className="border-b pb-4">
+                <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وحدود الفروع المسموحة</h3>
+                <p className="text-xs text-gray-500">حدد أسعار الباقات وعدد الفروع المسموح إنشاؤها لكل باقة (مثلاً الباقة الشهرية تسمح بمحلين، السنوية لـ 5 فروع، إلخ)</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {pricingPlans.map(plan => (
                   <div key={plan.id} className="p-5 border rounded-2xl bg-gray-50 flex flex-col justify-between space-y-4">
                     <div>
                       <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
-                      <p className="text-2xl font-black text-purple-600 mt-2">{plan.price} {plan.currency}</p>
+                      <p className="text-xl font-black text-purple-600 mt-1">{plan.price} {plan.currency}</p>
+                      <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">الحد الأقصى: {plan.maxShops} فروع</span>
                     </div>
-                    <input 
-                      type="number" 
-                      defaultValue={plan.price} 
-                      onChange={e => {
-                        const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
-                        setPricingPlans(updated);
-                      }}
-                      className="w-full px-3 py-1.5 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                    />
+                    
+                    <div className="space-y-2.5 pt-2 border-t">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-600 mb-1">تعديل السعر ({plan.currency}):</label>
+                        <input 
+                          type="number" 
+                          value={plan.price} 
+                          onChange={e => {
+                            const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
+                            setPricingPlans(updated);
+                          }}
+                          className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-600 mb-1">الحد الأقصى للفروع المسموحة:</label>
+                        <input 
+                          type="number" 
+                          value={plan.maxShops} 
+                          onChange={e => {
+                            const updated = pricingPlans.map(p => p.id === plan.id ? {...p, maxShops: Number(e.target.value)} : p);
+                            setPricingPlans(updated);
+                          }}
+                          className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end">
-                <button onClick={() => showToast('تم حفظ الأسعار بنجاح!', 'success')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
+              <div className="flex justify-end pt-2">
+                <button onClick={() => showToast('تم حفظ الأسعار وحدود الفروع بنجاح!', 'success')} className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl text-xs font-bold cursor-pointer shadow-md">حفظ كافة الإعدادات والأسعار ✅</button>
               </div>
             </div>
           )}
@@ -1172,7 +1223,7 @@ export default function App() {
 
               <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap justify-between items-center gap-4">
                 <div>
-                  <h4 className="font-bold text-sm">تجديد اشتراكات جميع فروع هذا العميل دفعة واحدة:</h4>
+                  <h4 className="font-bold text-sm">تجديد اشتراكات جميع فروع هذا العميل دفعة واحدة (تُحتسب صلاحيتها على الحساب الأساسي):</h4>
                   <p className="text-xs text-gray-300">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
                 </div>
                 <div className="flex gap-2">
@@ -1479,7 +1530,7 @@ export default function App() {
                 </form>
               </div>
 
-              {/* 🌟 قائمة تسجيل المصروفات المضافة لشاشة العامل */}
+              {/* قائمة تسجيل المصروفات المضافة لشاشة العامل */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> تسجيل مصروف لـ {currentUser.shopName}</h3>
                 <form onSubmit={handleAddExpense} className="space-y-3">
@@ -1964,11 +2015,10 @@ export default function App() {
           </div>
         )}
 
-        {/* ================= 🌟 واجهة إدارة وإضافة الفروع المطورة باحترافية (إضافة، تعديل، حذف) ================= */}
+        {/* ================= 🌟 واجهة إدارة وإضافة الفروع المطورة باحترافية وتصميم عصري (إضافة، تعديل، حذف) ================= */}
         {activeTab === 'addShop' && (
           <div className="space-y-8 max-w-4xl mx-auto py-2">
             
-            {/* نموذج إضافة أو تعديل فرع بتصميم احترافي */}
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
               
@@ -1982,7 +2032,7 @@ export default function App() {
                       {editingShopId ? 'تعديل بيانات فرع المغسلة ✏️' : 'إضافة فرع جديد لمجموعتك 🏪'}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {editingShopId ? 'قم بتحديث معلومات الفرع وعامل الفرع أدناه' : 'سيحصل الفرع الجديد على فترة تجريبية مجانية 7 أيام تلقائياً'}
+                      {editingShopId ? 'قم بتحديث معلومات الفرع وعامل الفرع أدناه' : 'تُحدد مدة الصلاحية وعدد الفروع المسموحة بناءً على باقة الحساب الأساسي'}
                     </p>
                   </div>
                 </div>
@@ -2067,7 +2117,6 @@ export default function App() {
               </form>
             </div>
 
-            {/* قائمة الفروع المسجلة مع أزرار التعديل والحذف الاحترافية */}
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-5">
               <div className="flex justify-between items-center border-b pb-4">
                 <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
@@ -2086,6 +2135,9 @@ export default function App() {
                         <h4 className="font-black text-base text-slate-900">🏪 {s.name}</h4>
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                           {s.status === 'active' ? 'نشط ✨' : 'موقوف ⚠️'}
+                        </span>
+                        <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">
+                          الباقة: {s.subscriptionType}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 flex items-center gap-1.5">
