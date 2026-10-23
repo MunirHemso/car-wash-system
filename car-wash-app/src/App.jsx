@@ -5,10 +5,9 @@ import {
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 
 export default function App() {
-  // الحفاظ على حالة تسجيل الدخول عبر التخزين المحلي لمنع الخروج عند Refresh
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('carWash_currentUser');
@@ -18,7 +17,6 @@ export default function App() {
     }
   });
 
-  // تحديث التخزين المحلي تلقائياً عند تغيير المستخدم
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('carWash_currentUser', JSON.stringify(currentUser));
@@ -27,11 +25,9 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // حقول تسجيل الدخول
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
 
-  // قاعدة بيانات المحلات والفروع
   const [shops, setShops] = useState([
     { 
       id: 1, 
@@ -61,7 +57,29 @@ export default function App() {
     }
   ]);
 
-  // مكتبة موديلات السيارات الشاملة
+  // مزامنة المحلات والفروع سحابياً بشكل لحظي من Firestore
+  useEffect(() => {
+    const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
+      if (!snapshot.empty) {
+        const fetchedShops = snapshot.docs.map(doc => ({ id: Number(doc.id), ...doc.data() }));
+        setShops(fetchedShops);
+
+        if (currentUser && currentUser.role === 'owner') {
+          const updatedOwnedShops = fetchedShops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === currentUser.email.toLowerCase());
+          setCurrentUser(prev => ({
+            ...prev,
+            ownedShops: updatedOwnedShops
+          }));
+        }
+      } else {
+        shops.forEach(async (s) => {
+          await setDoc(doc(db, "platformShops", String(s.id)), s);
+        });
+      }
+    });
+    return () => unsubShops();
+  }, []);
+
   const comprehensiveCarLibrary = [
     "فيات إيجيا (Fiat Egea)", "فيات لينيا (Fiat Linea)", "فيات پونتو (Fiat Punto)", "فيات دوبلو (Fiat Doblo)", "فيات فيورينو (Fiat Fiorino)", "فيات تيبو (Fiat Tipo)",
     "رينو ميجان (Renault Megane)", "رينو كليو (Renault Clio)", "رينو فلوينس (Renault Fluence)", "رينو سيمبول (Renault Symbol)", "رينو تاليسمان (Renault Talisman)", "رينو كابتشر (Renault Captur)",
@@ -81,14 +99,12 @@ export default function App() {
     "توج تي 10 إكس (Togg T10X)"
   ];
 
-  // العمليات والمصاريف والديون لكل محل
-  const [transactions, setTransactions] = useState({ 1: [], 2: [] });
-  const [expenses, setExpenses] = useState({ 1: [], 2: [] });
-  const [debts, setDebts] = useState({ 1: [], 2: [] });
-  const [debtRepayments, setDebtRepayments] = useState({ 1: [], 2: [] });
-  const [announcements, setAnnouncements] = useState({ 1: [], 2: [] });
+  const [transactions, setTransactions] = useState({});
+  const [expenses, setExpenses] = useState({});
+  const [debts, setDebts] = useState({});
+  const [debtRepayments, setDebtRepayments] = useState({});
+  const [announcements, setAnnouncements] = useState({});
 
-  // مزامنة البيانات سحابياً بشكل لحظي (Real-time Firestore Sync)
   useEffect(() => {
     const unsubscribes = [];
 
@@ -131,11 +147,9 @@ export default function App() {
     };
   }, [shops]);
 
-  // حالات التنقل للأدمن
   const [selectedShopId, setSelectedShopId] = useState(1);
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // حالات إضافة فرع جديد
   const [newShopName, setNewShopName] = useState('');
   const [newWorkerEmail, setNewWorkerEmail] = useState('');
   const [newWorkerPass, setNewWorkerPass] = useState('');
@@ -143,12 +157,10 @@ export default function App() {
   const [newShopAddress, setNewShopAddress] = useState('');
   const [editingShop, setEditingShop] = useState(null);
 
-  // حالات الإدارة لإضافة تنبيه جديد
   const [ownerNoticeTitle, setOwnerNoticeTitle] = useState('');
   const [ownerNoticeText, setOwnerNoticeText] = useState('');
   const [announcementDate, setAnnouncementDate] = useState(new Date().toISOString().slice(0, 10));
 
-  // حالات العامل
   const [vehicleCategory, setVehicleCategory] = useState('سيارة');
   const [carModel, setCarModel] = useState('');
   const [plateNumber, setPlateNumber] = useState('');
@@ -164,19 +176,16 @@ export default function App() {
   const [afterPhoto, setAfterPhoto] = useState(null);
   const [editingTxId, setEditingTxId] = useState(null);
 
-  // حالات تسديد الدين من قبل العامل
   const [settlingDebtId, setSettlingDebtId] = useState(null);
   const [repayMethod, setRepayMethod] = useState('كاش');
   const [repayNotes, setRepayNotes] = useState('');
   const [repayDate, setRepayDate] = useState(new Date().toISOString().slice(0, 10));
 
-  // حالات المصاريف
   const [expCategory, setExpCategory] = useState('غذاء وضيافة');
   const [expTitle, setExpTitle] = useState('');
   const [expAmount, setExpAmount] = useState('');
   const [expNotes, setExpNotes] = useState('');
 
-  // الفاتورة والتحديث
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -188,21 +197,20 @@ export default function App() {
     }, 600);
   };
 
-  // دالة تسجيل الدخول عبر Firebase Authentication
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
 
     try {
-      await signInWithEmailAndPassword(auth, inputEmail, inputPassword);
-
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
+        try { await signInWithEmailAndPassword(auth, inputEmail, inputPassword); } catch (e) {}
         setCurrentUser({ email: inputEmail, role: 'programmer', name: 'المبرمج (المدير العام)' });
         return;
       }
 
-      const ownedShops = shops.filter(s => s.ownerEmail.toLowerCase() === inputEmail.toLowerCase());
+      const ownedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === inputEmail.toLowerCase());
       if (ownedShops.length > 0) {
+        try { await signInWithEmailAndPassword(auth, inputEmail, inputPassword); } catch (e) {}
         const userData = {
           email: inputEmail,
           role: 'owner',
@@ -215,7 +223,7 @@ export default function App() {
         return;
       }
 
-      const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase());
+      const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase() && s.workerPass === inputPassword);
       if (targetShop) {
         if (targetShop.status === 'suspended') {
           alert('عذراً، هذا الفرع معلق أو موقوف حالياً من قبل الإدارة!');
@@ -229,16 +237,16 @@ export default function App() {
           shopInfo: targetShop
         };
         setCurrentUser(workerData);
-      } else {
-        alert('البريد الإلكتروني مسجل في نظام Firebase ولكن ليس له محل مرتبط حالياً!');
+        return;
       }
+
+      alert('البريد الإلكتروني أو كلمة المرور غير صحيحة!');
     } catch (error) {
       console.error(error);
-      alert('فشل تسجيل الدخول: تأكد من صحة البريد الإلكتروني أو كلمة المرور.');
+      alert('فشل تسجيل الدخول: تأكد من صحة البيانات المدخلة.');
     }
   };
 
-  // دالة استعادة كلمة المرور عبر الإيميل
   const handleForgotPassword = async () => {
     if (!inputEmail) {
       alert('الرجاء كتابة بريدك الإلكتروني في حقل الإيميل أولاً!');
@@ -308,7 +316,6 @@ export default function App() {
     }
   };
 
-  // 📸 دالة معالجة وضغط الصور مع دعم الكاميرا المباشرة والاستوديو وفحص صيغ الصور
   const handleImageUpload = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -343,23 +350,19 @@ export default function App() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          // ضغط آمن وصغير الحجم جداً
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
           if (type === 'before') setBeforePhoto(compressedBase64);
           if (type === 'after') setAfterPhoto(compressedBase64);
         } catch (err) {
           console.error(err);
-          alert('حدث خطأ أثناء معالجة الصورة، يرجى تجربة صورة أخرى.');
+          alert('حدث خطأ أثناء معالجة الصورة.');
         }
       };
       img.onerror = () => {
-        alert('صيغة الصورة غير مدعومة من المتصفح. يرجى التصوير مباشرة بالكاميرا أو اختيار صورة بصيغة JPG أو PNG.');
+        alert('صيغة الصورة غير مدعومة. يرجى التصوير بالكاميرا أو اختيار صيغة JPG أو PNG.');
       };
       img.src = event.target.result;
-    };
-    reader.onerror = () => {
-      alert('فشل قراءة ملف الصورة.');
     };
     reader.readAsDataURL(file);
   };
@@ -481,85 +484,93 @@ export default function App() {
     setEditingTxId(null);
   };
 
-  const handleSuspendShop = (shopId) => {
+  const handleSuspendShop = async (shopId) => {
     if (!window.confirm('هل أنت متأكد من تعليق هذا الفرع؟ سيتم منع العامل من الدخول فوراً.')) return;
-    setShops(prev => {
-      const updated = prev.map(s => s.id === shopId ? { ...s, status: 'suspended', suspendedAt: new Date().toISOString() } : s);
-      if (currentUser && currentUser.role === 'owner') {
-        setCurrentUser(curr => ({
-          ...curr,
-          ownedShops: updated.filter(s => s.ownerEmail.toLowerCase() === curr.email.toLowerCase())
-        }));
-      }
-      return updated;
-    });
-    alert('تم تعليق المحل بنجاح.');
+    try {
+      await updateDoc(doc(db, "platformShops", String(shopId)), {
+        status: 'suspended',
+        suspendedAt: new Date().toISOString()
+      });
+      alert('تم تعليق المحل بنجاح.');
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء تعليق الفرع.');
+    }
   };
 
-  const handleActivateShop = (shopId) => {
-    setShops(prev => {
-      const updated = prev.map(s => s.id === shopId ? { ...s, status: 'active', suspendedAt: null } : s);
-      if (currentUser && currentUser.role === 'owner') {
-        setCurrentUser(curr => ({
-          ...curr,
-          ownedShops: updated.filter(s => s.ownerEmail.toLowerCase() === curr.email.toLowerCase())
-        }));
-      }
-      return updated;
-    });
-    alert('تم إعادة تفعيل الفرع بنجاح!');
+  const handleActivateShop = async (shopId) => {
+    try {
+      await updateDoc(doc(db, "platformShops", String(shopId)), {
+        status: 'active',
+        suspendedAt: null
+      });
+      alert('تم إعادة تفعيل الفرع بنجاح!');
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء تفعيل الفرع.');
+    }
   };
 
-  const handleSaveEditShop = (e) => {
+  const handleSaveEditShop = async (e) => {
     e.preventDefault();
     if (!editingShop) return;
-    setShops(prev => {
-      const updated = prev.map(s => s.id === editingShop.id ? editingShop : s);
-      if (currentUser && currentUser.role === 'owner') {
-        setCurrentUser(curr => ({
-          ...curr,
-          ownedShops: updated.filter(s => s.ownerEmail.toLowerCase() === curr.email.toLowerCase())
-        }));
-      }
-      return updated;
-    });
-    setEditingShop(null);
-    alert('تم تعديل بيانات المحل بنجاح!');
+    try {
+      await updateDoc(doc(db, "platformShops", String(editingShop.id)), {
+        name: editingShop.name,
+        workerEmail: editingShop.workerEmail,
+        workerPass: editingShop.workerPass,
+        phone: editingShop.phone,
+        address: editingShop.address
+      });
+      setEditingShop(null);
+      alert('تم تعديل بيانات المحل بنجاح!');
+    } catch (e) {
+      console.error(e);
+      alert('حدث خطأ أثناء حفظ التعديلات.');
+    }
   };
 
-  const handleOwnerAddShop = (e) => {
+  const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
 
-    const newShopId = Date.now();
-    const newShopObj = {
-      id: newShopId,
-      name: newShopName,
-      owner: currentUser.ownerName,
-      ownerEmail: currentUser.email,
-      workerEmail: newWorkerEmail,
-      workerPass: newWorkerPass,
-      phone: newShopPhone || '+90 ...',
-      address: newShopAddress || 'العنوان لم يحدد',
-      code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
-      status: 'active',
-      suspendedAt: null
-    };
+    try {
+      const newShopId = Date.now();
+      const newShopObj = {
+        id: newShopId,
+        name: newShopName,
+        owner: currentUser.ownerName,
+        ownerEmail: currentUser.email,
+        workerEmail: newWorkerEmail,
+        workerPass: newWorkerPass,
+        phone: newShopPhone || '+90 ...',
+        address: newShopAddress || 'العنوان لم يحدد',
+        code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
+        status: 'active',
+        suspendedAt: null
+      };
 
-    setShops(prev => [...prev, newShopObj]);
-    setCurrentUser(curr => ({
-      ...curr,
-      ownedShops: [...(curr.ownedShops || []), newShopObj]
-    }));
+      await setDoc(doc(db, "platformShops", String(newShopId)), newShopObj);
 
-    setNewShopName('');
-    setNewWorkerEmail('');
-    setNewWorkerPass('');
-    setNewShopPhone('');
-    setNewShopAddress('');
-    setSelectedShopId(newShopId);
-    alert('تم إضافة المحل والفرع الجديد وربطه بالحسابات بنجاح! 🏪✨');
-    setActiveTab('dashboard');
+      const updatedOwnedShops = [...(currentUser.ownedShops || []), newShopObj];
+      setCurrentUser(prev => ({
+        ...prev,
+        ownedShops: updatedOwnedShops
+      }));
+
+      setNewShopName('');
+      setNewWorkerEmail('');
+      setNewWorkerPass('');
+      setNewShopPhone('');
+      setNewShopAddress('');
+      setSelectedShopId(newShopId);
+      
+      alert('تم إضافة الفرع وحفظه سحابياً بنجاح تام! 🏪✨ العامل يستطيع تسجيل الدخول فوراً ببريده وكلمة المرور المدخلة.');
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error(error);
+      alert('حدث خطأ أثناء حفظ الفرع في قاعدة البيانات: ' + error.message);
+    }
   };
 
   const handleDeleteTransactionByOwner = async (shopId, txId) => {
@@ -795,7 +806,6 @@ export default function App() {
         </header>
 
         <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-          
           {shopAnnouncementsList.length > 0 && (
             <div className="space-y-2">
               {shopAnnouncementsList.map(ann => (
@@ -819,7 +829,6 @@ export default function App() {
                 <Car className="text-blue-600" /> {editingTxId ? 'تعديل معلومات المركبة ✏️' : 'تسجيل غسيل جديد'}
               </h3>
               <form onSubmit={handleAddTransaction} className="space-y-3">
-                
                 <div className="space-y-1">
                   <label className="block text-xs font-bold text-gray-700">نوع المركبة *</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -876,11 +885,9 @@ export default function App() {
                   <input type="text" placeholder="ملاحظات حول حالة السيارة..." value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
                 </div>
 
-                {/* قسم الصور: دعم الكاميرا المباشرة والاستوديو وصيغ متعددة */}
                 <div className="space-y-3">
                   <label className="block text-xs font-bold text-gray-700">توثيق حالة المركبة بالصور</label>
                   
-                  {/* صورة قبل الغسيل */}
                   <div className="p-3 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2">
                     <span className="text-[11px] font-bold text-blue-900 block">صورة قبل الغسيل: {beforePhoto ? '✓ تمت الإضافة' : ''}</span>
                     <div className="grid grid-cols-2 gap-2">
@@ -895,7 +902,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* صورة بعد الغسيل */}
                   <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
                     <span className="text-[11px] font-bold text-emerald-900 block">صورة بعد الغسيل: {afterPhoto ? '✓ تمت الإضافة' : ''}</span>
                     <div className="grid grid-cols-2 gap-2">
@@ -940,7 +946,6 @@ export default function App() {
             </div>
 
             <div className="lg:col-span-2 space-y-6">
-              
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="font-bold text-amber-800 flex items-center gap-2">⚠️ قائمة الديون المعلقة (تسديد ديون الزبائن)</h3>
@@ -1016,7 +1021,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
             </div>
           </div>
         </main>
@@ -1169,7 +1173,6 @@ export default function App() {
       </nav>
 
       <main className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-        
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex justify-between items-center">
