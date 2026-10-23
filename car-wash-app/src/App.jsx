@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
+  Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
+  Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
+  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet 
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -57,6 +58,7 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
+  // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
     const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
       if (!snapshot.empty) {
@@ -528,6 +530,55 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
+  const handlePrintInvoice = (inv) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return alert('يرجى السماح بفتح النوافذ المنبثقة.');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>فاتورة - ${inv.plate}</title>
+        <style>
+          body { font-family: Tahoma, sans-serif; padding: 20px; text-align: right; }
+          .box { max-width: 450px; margin: auto; border: 2px solid #0f172a; padding: 20px; border-radius: 15px; }
+          .center { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+          .photos { display: flex; justify-content: space-around; margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 10px; text-align: center; }
+          .photos img { width: 45%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; }
+          .total { background: #ecfdf5; color: #047857; padding: 10px; text-align: center; font-weight: bold; margin-top: 15px; border-radius: 8px; border: 1px solid #a7f3d0; }
+        </style>
+      </head>
+      <body>
+        <div class="box">
+          <div class="center">
+            <h2>🏪 ${inv.shopName}</h2>
+            <p>${inv.shopInfo?.address || 'إسكندرون'} | هاتف: ${inv.shopInfo?.phone || '+90...'}</p>
+          </div>
+          <div class="row"><span>المركبة:</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
+          <div class="row"><span>اللوحة:</span><strong>${inv.plate}</strong></div>
+          <div class="row"><span>الخدمة:</span><strong>${inv.service}</strong></div>
+          <div class="row"><span>وقت العمل:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
+          <div class="row"><span>الدفع:</span><strong>${inv.method}</strong></div>
+          ${inv.notes ? `<div class="row"><span>ملاحظات:</span><strong>${inv.notes}</strong></div>` : ''}
+
+          ${(inv.beforePhoto || inv.afterPhoto) ? `
+            <div class="photos">
+              ${inv.beforePhoto ? `<div><span style="font-size:10px;">قبل الغسيل</span><img src="${inv.beforePhoto}"/></div>` : ''}
+              ${inv.afterPhoto ? `<div><span style="font-size:10px;">بعد الغسيل</span><img src="${inv.afterPhoto}"/></div>` : ''}
+            </div>
+          ` : ''}
+
+          <div class="total">الإجمالي: ${inv.price} ليرة</div>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -606,7 +657,7 @@ export default function App() {
     try {
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
         alert('تم التحديث بنجاح ✏️');
@@ -657,7 +708,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin) =================
+  // ================= 🌟 لوحة المبرمج الاحترافية (SaaS Admin) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -776,7 +827,7 @@ export default function App() {
 
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  <UsersRound className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
+                  <Users className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {regularClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء.</p> : regularClients.map((client, idx) => (
@@ -1079,7 +1130,7 @@ export default function App() {
                     <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء</span>
                     <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length} عميل</h3>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
+                  <div className="bg-purple-50 p-4 rounded-2xl"><Users size={28} className="text-purple-600" /></div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
@@ -1154,7 +1205,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 شاشة العامل (النسخة الأصلية 100%) =================
+  // ================= شاشة العامل (الأصلية 100%) =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1394,7 +1445,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 لوحة صاحب المحل (المالك - النسخة الأصلية 100%) =================
+  // ================= 🌟 لوحة صاحب المحل (المالك - الأصلية 100%) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
