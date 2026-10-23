@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Tag as TagIcon, Percent
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -47,21 +47,19 @@ export default function App() {
     }
   ]);
 
-  // خطط الأسعار الافتراضية للباقات
+  // خطط الأسعار للباقات
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
-    { id: 2, name: 'الباقة السنوية (توفير)', type: 'yearly', price: 5000, currency: 'ليرة' },
+    { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة' }
   ]);
 
-  // قائمة الخصومات
+  // نظام الخصومات الجديد
   const [discountsList, setDiscountsList] = useState([
-    { id: 1, code: 'WELCOME10', percent: 10, description: 'خصم الترحيب للعملاء الجدد' },
-    { id: 2, code: 'VIP20', percent: 20, description: 'خصم خاص لكبار العملاء' }
+    { id: 1, code: 'WELCOME10', percent: 10, description: 'خصم ترحيبي 10%' },
+    { id: 2, code: 'VIP25', percent: 25, description: 'خصم خاص 25%' }
   ]);
 
-  const [newPlanName, setNewPlanName] = useState('');
-  const [newPlanPrice, setNewPlanPrice] = useState('');
   const [newDiscountCode, setNewDiscountCode] = useState('');
   const [newDiscountPercent, setNewDiscountPercent] = useState('');
 
@@ -171,7 +169,7 @@ export default function App() {
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
-  // حقول تعديل بيانات العميل
+  // حقول تعديل العميل
   const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
@@ -340,7 +338,7 @@ export default function App() {
     }
   };
 
-  // 🚀 تحديث بيانات العميل (تعديل أو إعادة تعيين بيانات الدخول)
+  // 🚀 تحديث بيانات العميل الشخصية أو الضريبية
   const handleSaveClientEdits = async (e) => {
     e.preventDefault();
     if (!editingClientData) return;
@@ -361,19 +359,26 @@ export default function App() {
     }
   };
 
-  // 🚀 حذف العميل بالكامل مع جميع فروعه
-  const handleDeleteClientCompletely = async (clientEmail) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا العميل وجميع فروعه نهائياً؟ لا يمكن التراجع عن هذا الإجراء!')) return;
+  // 🚀 تعليق/أرشفة العميل لمدة 3 أشهر بدل الحذف النهائي
+  const handleSuspendClientForMonths = async (clientEmail) => {
+    if (!window.confirm('هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟ يمكنه تفعيلها مجدداً لاحقاً.')) return;
 
     try {
+      const threeMonthsLater = new Date();
+      threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
+
       const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
       for (const shop of clientShops) {
-        await deleteDoc(doc(db, "platformShops", String(shop.id)));
+        await updateDoc(doc(db, "platformShops", String(shop.id)), {
+          status: 'suspended',
+          suspendedAt: new Date().toISOString(),
+          gracePeriodExpiry: threeMonthsLater.toISOString().slice(0, 10)
+        });
       }
       setSelectedClientEmail(null);
-      alert('تم حذف العميل وجميع فروعه بنجاح من قاعدة البيانات.');
+      alert('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.');
     } catch (e) {
-      alert('حدث خطأ أثناء الحذف.');
+      alert('حدث خطأ أثناء تعليق الحساب.');
     }
   };
 
@@ -398,7 +403,8 @@ export default function App() {
           subscriptionType: planType,
           subscriptionExpiry: expiryDate,
           status: 'active',
-          suspendedAt: null
+          suspendedAt: null,
+          gracePeriodExpiry: null
         });
       }
       alert(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`);
@@ -424,7 +430,8 @@ export default function App() {
     try {
       await updateDoc(doc(db, "platformShops", String(shopId)), {
         status: 'active',
-        suspendedAt: null
+        suspendedAt: null,
+        gracePeriodExpiry: null
       });
       alert('تم تفعيل الفرع بنجاح!');
     } catch (e) {
@@ -539,7 +546,7 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
-  // إضافة فرع جديد من قبل صاحب المحل مع 7 أيام تجريبية
+  // إضافة فرع جديد من قبل المالك مع 7 أيام تجريبية
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -645,7 +652,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء وعدد فروعهم، باقات الأسعار، والخصومات) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات، وكشوفات الاشتراكات) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -693,7 +700,7 @@ export default function App() {
             🎁 إدارة الخصومات
           </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            📑 كشف حسابات الاشتراكات العامة
+            📑 كشف حسابات الاشتراكات المالية
           </button>
         </nav>
 
@@ -717,7 +724,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* تبويب 1: عرض قائمة العملاء (أصحاب المحلات وكم فرع لديهم) */}
+          {/* تبويب 1: قائمة العملاء */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -820,7 +827,7 @@ export default function App() {
               <div className="flex justify-between items-center border-b pb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
-                  <p className="text-xs text-gray-500">حدد أسعار الباقات التي تظهر لعملائك أو تطلبها منهم لتجديد الاشتراكات</p>
+                  <p className="text-xs text-gray-500">تعديل أسعار الباقات والخطط التي تظهر لعملائك</p>
                 </div>
               </div>
 
@@ -847,8 +854,8 @@ export default function App() {
               </div>
 
               <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200 flex justify-between items-center">
-                <span className="text-xs font-bold text-purple-900">💡 ملاحظة: تعديل أسعار الباقات هنا ينعكس على السجلات المالية الخاصة بك.</span>
-                <button onClick={() => alert('تم حفظ الأسعار بنجاح!')} className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold">حفظ الأسعار ✅</button>
+                <span className="text-xs font-bold text-purple-900">💡 ملاحظة: تعديل أسعار الباقات هنا محدث وجاهز.</span>
+                <button onClick={() => alert('تم حفظ أسعار الباقات بنجاح!')} className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
               </div>
             </div>
           )}
@@ -859,14 +866,14 @@ export default function App() {
               <div className="flex justify-between items-center border-b pb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">🎁 نظام الخصومات والعروض الترويجية</h3>
-                  <p className="text-xs text-gray-500">أنشئ رموز خصم لعملائك (نسبة مئوية من قيمة الاشتراك)</p>
+                  <p className="text-xs text-gray-500">أنشئ أكواد خصم للعملاء عند تجديد الاشتراكات</p>
                 </div>
               </div>
 
               <form onSubmit={e => {
                 e.preventDefault();
                 if (!newDiscountCode || !newDiscountPercent) return alert('أدخل الكود ونسبة الخصم');
-                setDiscountsList([...discountsList, { id: Date.now(), code: newDiscountCode.toUpperCase(), percent: Number(newDiscountPercent), description: 'خصم مخصص' }]);
+                setDiscountsList([...discountsList, { id: Date.now(), code: newDiscountCode.toUpperCase(), percent: Number(newDiscountPercent), description: 'خصم ترويجي' }]);
                 setNewDiscountCode('');
                 setNewDiscountPercent('');
                 alert('تمت إضافة كود الخصم بنجاح! 🎉');
@@ -883,14 +890,14 @@ export default function App() {
                       <span className="font-mono font-black text-purple-700 text-base">🏷️ {disc.code}</span>
                       <p className="text-xs text-gray-600 mt-0.5">نسبة الخصم: <strong className="text-emerald-600">{disc.percent}%</strong> | {disc.description}</p>
                     </div>
-                    <button onClick={() => setDiscountsList(discountsList.filter(d => d.id !== disc.id))} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold">حذف</button>
+                    <button onClick={() => setDiscountsList(discountsList.filter(d => d.id !== disc.id))} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">حذف الكود</button>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* الملف الشخصي والضريبي والتعديل والحذف للعميل المحدد */}
+          {/* الملف الشخصي والضريبي، التعديل، والتعليق لمدة 3 أشهر للعميل المحدد */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
@@ -898,18 +905,18 @@ export default function App() {
                   <span className="text-xs font-bold text-purple-600 uppercase">ملف العميل التجاري والضريبي</span>
                   <h2 className="text-2xl font-black text-slate-900 mt-1">👤 {selectedClient.ownerName}</h2>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button 
                     onClick={() => setEditingClientData({ ownerName: selectedClient.ownerName, ownerEmail: selectedClient.ownerEmail, taxNumber: selectedClient.taxNumber, phone: selectedClient.phone })}
                     className="bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    تعديل البيانات / إعادة تعيين ✏️
+                    تعديل البيانات / إيميل الدخول ✏️
                   </button>
                   <button 
-                    onClick={() => handleDeleteClientCompletely(selectedClient.ownerEmail)}
-                    className="bg-red-100 text-red-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                    onClick={() => handleSuspendClientForMonths(selectedClient.ownerEmail)}
+                    className="bg-amber-100 text-amber-800 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    حذف العميل وفروعه 🗑️
+                    تعليق وحفظ الحساب لمدة 3 أشهر ⏳
                   </button>
                   <button 
                     onClick={() => setSelectedClientEmail(null)}
@@ -920,7 +927,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* نموذج تعديل بيانات العميل إذا تم النقر على تعديل */}
               {editingClientData && (
                 <form onSubmit={handleSaveClientEdits} className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-3">
                   <h4 className="font-bold text-sm text-blue-900">تعديل بيانات العميل أو تحديث بيانات الدخول والضريبة:</h4>
@@ -930,8 +936,8 @@ export default function App() {
                     <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold">حفظ التعديلات ✅</button>
-                    <button type="button" onClick={() => setEditingClientData(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold">إلغاء</button>
+                    <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">حفظ التعديلات ✅</button>
+                    <button type="button" onClick={() => setEditingClientData(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">إلغاء</button>
                   </div>
                 </form>
               )}
@@ -958,13 +964,13 @@ export default function App() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'monthly')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد شهري للكل 🗓️
+                    تجديد شهري للكل (500 ليرة) 🗓️
                   </button>
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'yearly')} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد سنوي للكل 📅
+                    تجديد سنوي للكل (5000 ليرة) 📅
                   </button>
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'lifetime')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    مدى الحياة للكل ♾️
+                    مدى الحياة للكل (15000 ليرة) ♾️
                   </button>
                 </div>
               </div>
@@ -977,7 +983,7 @@ export default function App() {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-base text-gray-900">🏪 {shop.name}</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${shop.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {shop.status === 'active' ? 'نشط' : 'موقوف'}
+                          {shop.status === 'active' ? 'نشط' : 'معلق / مؤرشف'}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: {shop.phone}</p>
@@ -1004,12 +1010,13 @@ export default function App() {
             </div>
           )}
 
+          {/* تبويب 5: كشف حسابات الاشتراكات المالية */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات والوضع المالي للمنصة
+                <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات والإيرادات المالية للمنصة
               </h3>
-              <p className="text-xs text-gray-500">سجل بجميع العملاء (أصحاب المحلات) وعدد فروعهم وحالة اشتراكاتهم لتتبع إيراداتك بانتظام.</p>
+              <p className="text-xs text-gray-500">تقارير إيرادات الاشتراكات بحسب الباقات النشطة والعملاء المسجلين.</p>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-right text-sm">
@@ -1017,26 +1024,31 @@ export default function App() {
                     <tr>
                       <th className="p-3">صاحب المحل (العميل)</th>
                       <th className="p-3">الرقم الضريبي</th>
-                      <th className="p-3">عدد الفروع المملوكة</th>
-                      <th className="p-3">نوع الاشتراك العام</th>
+                      <th className="p-3">عدد الفروع</th>
+                      <th className="p-3">نوع الباقة النشطة</th>
+                      <th className="p-3">قيمة الاشتراك المتوقعة</th>
                       <th className="p-3">تاريخ انتهاء الاشتراك</th>
-                      <th className="p-3">الحالة العامة</th>
+                      <th className="p-3">الحالة</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {clientsList.map((client, idx) => {
                       const firstShop = client.shopsList[0] || {};
                       const hasActiveShop = client.shopsList.some(s => s.status === 'active');
+                      const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+                      const totalEstimated = planPrice * client.shopsList.length;
+
                       return (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
                           <td className="p-3 font-mono">{client.taxNumber}</td>
                           <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
                           <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : firstShop.subscriptionType === 'yearly' ? 'سنوي 📅' : firstShop.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
+                          <td className="p-3 font-black text-emerald-600">{totalEstimated} ليرة</td>
                           <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
                           <td className="p-3">
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {hasActiveShop ? 'نشط' : 'منتهي / موقوف'}
+                              {hasActiveShop ? 'نشط' : 'معلق / منتهي'}
                             </span>
                           </td>
                         </tr>
@@ -1119,11 +1131,20 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك) =================
+  // ================= لوحة صاحب المحل (المالك) مع فحص انتهاء الاشتراك وشريط التحذير =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
   const targetShopIds = isAllShops ? ownedShops.map(s => s.id) : [Number(selectedShopId)];
+
+  // حساب الأيام المتبقية لانتهاء الاشتراك للفرع النشط
+  const calculateDaysRemaining = (expiryDateStr) => {
+    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 999;
+    const diffTime = new Date(expiryDateStr) - new Date();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const daysLeft = currentShop ? calculateDaysRemaining(currentShop.subscriptionExpiry) : 999;
 
   let totalRevenueAll = 0;
   let totalExpensesAll = 0;
@@ -1177,6 +1198,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+      {/* ⚠️ شريط تحذير انتهاء الاشتراك المثبت في الأعلى */}
+      {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
+        <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
+          <AlertTriangle size={18} />
+          <span>تحذير هام: سينتهي اشتراك هذا الفرع ({currentShop.name}) خلال {daysLeft} أيام! يرجى التواصل مع الإدارة لتجديد الاشتراك لتفادي توقف الخدمة.</span>
+        </div>
+      )}
+      {!isAllShops && currentShop && daysLeft < 0 && (
+        <div className="bg-red-600 text-white px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
+          <AlertTriangle size={18} />
+          <span>تنبيه: انتهت صلاحية اشتراك هذا الفرع! يرجى التجديد الفوري.</span>
+        </div>
+      )}
+
       <header className="bg-slate-900 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="bg-cyan-500/20 p-2 rounded-xl text-cyan-400"><Building size={22} /></div>
