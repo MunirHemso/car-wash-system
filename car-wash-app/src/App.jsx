@@ -55,9 +55,10 @@ export default function App() {
     }
   ]);
 
+  // باقات الأسعار مع تحديد الحد الأقصى للفروع المرتبطة باشتراك العميل (صاحب المحل)
   const [pricingPlans, setPricingPlans] = useState([
-    { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 2 },
-    { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
+    { id: 1, name: 'الباقة الشهرية (محل واحد)', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 1 },
+    { id: 2, name: 'الباقة السنوية (حتى 5 فروع)', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
   ]);
 
@@ -611,40 +612,46 @@ export default function App() {
     printWindow.document.close();
   };
 
+  // 🌟 التحقق الصارم من اشتراك العميل (صاحب المحل) وحدود فروع باقته قبل السماح بإضافة فرع جديد
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
-    const ownedShops = currentUser.ownedShops || [];
+    // جلب جميع فروع هذا العميل (صاحب المحل الحالي) من الحالة العامة
+    const ownerEmail = currentUser.email.toLowerCase();
+    const clientOwnedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === ownerEmail);
     
     if (!editingShopId) {
-      const firstShop = ownedShops[0];
-      const subType = firstShop ? (firstShop.subscriptionType || 'trial') : 'trial';
+      // تحديد نوع الباقة النشطة للعميل (من أول محل أو الحساب الأساسي)
+      const primaryShop = clientOwnedShops[0];
+      const subType = primaryShop ? (primaryShop.subscriptionType || 'trial') : 'trial';
       
       let maxAllowedShops = 1; 
       if (subType === 'trial') {
         maxAllowedShops = 1; 
       } else {
         const matchedPlan = pricingPlans.find(p => p.type === subType);
-        maxAllowedShops = matchedPlan ? matchedPlan.maxShops : 2;
+        maxAllowedShops = matchedPlan ? matchedPlan.maxShops : 1;
       }
 
-      if (ownedShops.length >= maxAllowedShops) {
-        showToast(`عذراً، باقتك الحالية (${subType}) تسمح بإنشاء ${maxAllowedShops} فروع كحد أقصى. يرجى ترقية الباقة لدى الإدارة لزيادة عدد الفروع!`, 'error');
+      // منع العميل من تجاوز الحد الأقصى المسموح لعدد الفروع في باقته
+      if (clientOwnedShops.length >= maxAllowedShops) {
+        showToast(`عذراً، اشتراكك الحالي (${subType}) يمنحك حق إنشاء ${maxAllowedShops} فرع كحد أقصى. لقد وصلت للحد الأقصى! يرجى مراجعة الإدارة لترقية باقتك.`, 'error');
         return;
       }
     }
 
     try {
       const shopId = editingShopId ? editingShopId : Date.now();
-      const firstShop = ownedShops[0] || {};
+      const primaryShop = clientOwnedShops[0] || {};
       const trialExpiry = new Date();
       trialExpiry.setDate(trialExpiry.getDate() + 7);
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
 
-      const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
-      const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
+      // توريث نوع الاشتراك ومدة الصلاحية الخاصة بالعميل (صاحب المحل)
+      const baseSubscriptionType = primaryShop.subscriptionType || existingShop.subscriptionType || 'trial';
+      const baseSubscriptionExpiry = primaryShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
       const shopObj = {
         id: Number(shopId),
@@ -667,8 +674,8 @@ export default function App() {
       await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
 
       const updatedOwnedShops = editingShopId 
-        ? ownedShops.map(s => s.id === Number(shopId) ? shopObj : s)
-        : [...ownedShops, shopObj];
+        ? clientOwnedShops.map(s => s.id === Number(shopId) ? shopObj : s)
+        : [...clientOwnedShops, shopObj];
 
       setCurrentUser(prev => ({
         ...prev,
@@ -683,7 +690,7 @@ export default function App() {
       setEditingShopId(null);
       setSelectedShopId(shopId);
       
-      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وارتباط صلاحيته بالحساب الأساسي! 🏪✨', 'success');
+      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وربطه باشتراكك الأساسي! 🏪✨', 'success');
     } catch (error) {
       showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
     }
@@ -702,7 +709,8 @@ export default function App() {
     if (!window.confirm('هل أنت متأكد من حذف هذا الفرع نهائياً من مجموعتك؟')) return;
     try {
       await deleteDoc(doc(db, "platformShops", String(shopId)));
-      const updatedOwnedShops = (currentUser.ownedShops || []).filter(s => s.id !== Number(shopId));
+      const ownerEmail = currentUser.email.toLowerCase();
+      const updatedOwnedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === ownerEmail && s.id !== Number(shopId));
       setCurrentUser(prev => ({
         ...prev,
         ownedShops: updatedOwnedShops
@@ -925,7 +933,6 @@ export default function App() {
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
 
-        {/* هيدر المبرمج بمعايير SaaS الحديثة */}
         <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
@@ -941,7 +948,6 @@ export default function App() {
           </button>
         </header>
 
-        {/* شريط التنقل للمبرمج */}
         <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'clients' && !selectedClientEmail ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
             👥 العملاء النشطون
@@ -1544,7 +1550,6 @@ export default function App() {
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
 
-        {/* هيدر العامل بتصميم سحابي راقي */}
         <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
@@ -1927,7 +1932,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 🌟 تصميم الهيدر العلوي الجديد والمحدث للمالك (أكثر ترتيباً وتناسقاً) */}
+      {/* الهيدر العلوي الجديد والمحدث للمالك */}
       <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
@@ -1963,7 +1968,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🌟 شريط التنقل (Tabs) الجديد بتصميم بطاقات الأزرار المنفصلة (Pill Tabs) الأكثر جاذبية */}
+      {/* شريط التنقل (Tabs) بتصميم بطاقات الأزرار المنفصلة (Pill Tabs) */}
       <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
         <button 
           onClick={() => setActiveTab('dashboard')} 
