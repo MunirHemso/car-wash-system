@@ -55,14 +55,12 @@ export default function App() {
     }
   ]);
 
-  // باقات الأسعار مع الحدود القصوى للفروع (maxShops)
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 2 },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
   ]);
 
-  // حالات إضافة وتعديل باقات الأسعار للمبرمج
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanType, setNewPlanType] = useState('');
   const [newPlanPrice, setNewPlanPrice] = useState('');
@@ -613,7 +611,6 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // إدارة الفروع: إنشاء محل جديد مع التحقق الصارم من الحد الأقصى المسموح به للباقة الأساسية لصاحب المحل
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
@@ -646,7 +643,6 @@ export default function App() {
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
 
-      // الاشتراك ومدة الصلاحية تنعكس وتورث دائماً من الحساب الأساسي لصاحب المحل
       const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
       const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
@@ -790,7 +786,6 @@ export default function App() {
     } catch (e) { showToast('حدث خطأ أثناء حفظ المصروف', 'error'); }
   };
 
-  // دوال إضافة، تعديل، وحذف باقات الأسعار من لوحة المبرمج
   const handleAddPricingPlan = (e) => {
     e.preventDefault();
     if (!newPlanName || !newPlanPrice || !newPlanMaxShops) {
@@ -842,7 +837,6 @@ export default function App() {
     showToast('تم تحديث بيانات الباقة بنجاح! ✅', 'success');
   };
 
-  // 🌟 دالة حساب الوقت المتبقي للباقة بالأيام والساعات (تظهر لصاحب المحل فقط)
   const calculateTimeRemaining = (expiryDateStr) => {
     if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 'مدى الحياة ♾️';
     const diff = new Date(expiryDateStr) - new Date();
@@ -931,34 +925,41 @@ export default function App() {
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
 
-        <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Shield className="text-purple-400" size={24} />
-            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، وباقات الأسعار)</span>
+        {/* هيدر المبرمج بمعايير SaaS الحديثة */}
+        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+              <Shield size={22} />
+            </div>
+            <div>
+              <span className="font-extrabold text-white text-base">لوحة المدير العام والتحكم الشامل</span>
+              <p className="text-xs text-slate-400">إدارة المنصة، العملاء، وباقات الأسعار</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1">
-            <LogOut size={14} /> خروج
+          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+            <LogOut size={15} /> تسجيل خروج
           </button>
         </header>
 
-        <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold flex-wrap">
-          <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+        {/* شريط التنقل للمبرمج */}
+        <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
+          <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'clients' && !selectedClientEmail ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
             👥 العملاء النشطون
           </button>
-          <button onClick={() => { setProgrammerTab('suspendedClients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'suspendedClients' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            ⏳ الحسابات المعلقة والمؤرشفة ({suspendedClientsList.length})
+          <button onClick={() => { setProgrammerTab('suspendedClients'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'suspendedClients' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
+            ⏳ الحسابات المعلقة ({suspendedClientsList.length})
           </button>
-          <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+          <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'addClient' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
             ➕ إضافة عميل جديد
           </button>
-          <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'pricingPlans' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            💰 إدارة الباقات والأسعار والفروع
+          <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'pricingPlans' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
+            💰 الباقات والفروع
           </button>
-          <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'directDiscounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            🏷️ نظام الخصومات المباشرة
+          <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'directDiscounts' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
+            🏷️ الخصومات المباشرة
           </button>
-          <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            📑 كشف حسابات الاشتراكات المالية
+          <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'subscriptionsReport' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
+            📑 كشف حسابات الاشتراكات
           </button>
         </nav>
 
@@ -1123,10 +1124,8 @@ export default function App() {
             </div>
           )}
 
-          {/* 🌟 تبويب إدارة الباقات والأسعار مع دعم كامل لإضافة، تعديل، وحذف الباقات */}
           {programmerTab === 'pricingPlans' && (
             <div className="space-y-8 max-w-5xl mx-auto">
-              
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
                 <div className="flex items-center gap-3 border-b pb-4">
@@ -1545,12 +1544,20 @@ export default function App() {
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
 
-        <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
-          <div>
-            <h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1>
-            <span className="text-xs text-cyan-300 font-medium">شاشة العامل</span>
+        {/* هيدر العامل بتصميم سحابي راقي */}
+        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
+              <Car size={22} />
+            </div>
+            <div>
+              <h1 className="font-extrabold text-white text-base">{currentUser.shopName}</h1>
+              <span className="text-xs text-cyan-300 font-medium">شاشة العامل النشطة</span>
+            </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer">خروج</button>
+          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+            <LogOut size={15} /> تسجيل خروج
+          </button>
         </header>
 
         <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
@@ -1920,33 +1927,70 @@ export default function App() {
         </div>
       )}
 
-      <header className="bg-slate-900 text-white p-4 shadow-md flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-cyan-500/20 p-2 rounded-xl text-cyan-400"><Building size={22} /></div>
+      {/* 🌟 تصميم الهيدر العلوي الجديد والمحدث للمالك (أكثر ترتيباً وتناسقاً) */}
+      <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex flex-wrap justify-between items-center gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
+            <Building size={22} />
+          </div>
           <div>
-            <h1 className="font-bold text-white text-base">لوحة تحكم المالك: {currentUser.ownerName} | الرقم الضريبي: {currentUser.taxNumber}</h1>
-            <span className="text-xs text-cyan-300 font-medium">إدارة المحلات والفروع المتعددة، والديون</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-extrabold text-white text-base tracking-wide">لوحة تحكم المالك: {currentUser.ownerName}</span>
+              <span className="text-[10px] bg-slate-800 text-blue-400 px-2.5 py-0.5 rounded-full font-mono border border-slate-700">الرقم الضريبي: {currentUser.taxNumber}</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">إدارة المحلات والفروع المتعددة، والديون والأرباح</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <select 
-            value={selectedShopId || ''} 
-            onChange={e => setSelectedShopId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold border border-slate-700 outline-none"
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <select 
+              value={selectedShopId || ''} 
+              onChange={e => setSelectedShopId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold border border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer shadow-inner pr-9"
+            >
+              {ownedShops.map(s => <option key={s.id} value={s.id}>🏪 {s.name} {s.status === 'suspended' ? '(معلق/منتهي)' : ''}</option>)}
+              <option value="all">📊 تقرير الجمع الشامل لجميع فروعي ({ownedShops.length} فرع)</option>
+            </select>
+          </div>
+          
+          <button 
+            onClick={handleLogout} 
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition shadow-sm"
           >
-            {ownedShops.map(s => <option key={s.id} value={s.id}>🏪 {s.name} {s.status === 'suspended' ? '(معلق/منتهي الاشتراك)' : ''}</option>)}
-            <option value="all">📊 تقرير الجمع الشامل لجميع فروعي ({ownedShops.length} فرع)</option>
-          </select>
-          <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1"><LogOut size={14} /> خروج</button>
+            <LogOut size={15} /> تسجيل خروج
+          </button>
         </div>
       </header>
 
-      <nav className="bg-white border-b px-6 py-3 flex gap-4 text-sm font-bold">
-        <button onClick={() => setActiveTab('dashboard')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'dashboard' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>📊 نظرة عامة والجرد</button>
-        <button onClick={() => setActiveTab('addShop')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'addShop' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>➕ إدارة وإضافة الفروع</button>
-        {!isAllShops && <button onClick={() => setActiveTab('accounting')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'accounting' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>📑 كشف الحسابات والديون والأرباح</button>}
-        <button onClick={() => setActiveTab('profile')} className={`pb-2 border-b-2 cursor-pointer ${activeTab === 'profile' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-700'}`}>⚙️ الملف الشخصي والضريبي</button>
+      {/* 🌟 شريط التنقل (Tabs) الجديد بتصميم بطاقات الأزرار المنفصلة (Pill Tabs) الأكثر جاذبية */}
+      <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
+        <button 
+          onClick={() => setActiveTab('dashboard')} 
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          📊 نظرة عامة والجرد
+        </button>
+        <button 
+          onClick={() => setActiveTab('addShop')} 
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'addShop' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          ➕ إدارة وإضافة الفروع
+        </button>
+        {!isAllShops && (
+          <button 
+            onClick={() => setActiveTab('accounting')} 
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'accounting' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            📑 كشف الحسابات والديون والأرباح
+          </button>
+        )}
+        <button 
+          onClick={() => setActiveTab('profile')} 
+          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'profile' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+        >
+          ⚙️ الملف الشخصي والضريبي
+        </button>
       </nav>
 
       <main className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
@@ -1963,7 +2007,7 @@ export default function App() {
                 
                 {/* 🌟 عداد الوقت المتبقي للباقة (أيام وساعات) يظهر لصاحب المحل فقط */}
                 {currentShop && (
-                  <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15">
+                  <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15 shadow-inner">
                     <span>⏳ عداد باقتك (الحساب الأساسي):</span>
                     <span className="text-emerald-400 font-mono text-sm">
                       {calculateTimeRemaining(currentShop.subscriptionExpiry)}
@@ -1971,8 +2015,8 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <div className="text-left bg-white/10 p-4 rounded-2xl backdrop-blur-md">
-                <span className="text-xs text-blue-200 block">صافي الأرباح الكلي</span>
+              <div className="text-left bg-white/10 p-4 rounded-2xl backdrop-blur-md shadow-inner border border-white/10">
+                <span className="text-xs text-blue-200 block font-bold">صافي الأرباح الكلي</span>
                 <span className="text-3xl font-black text-emerald-400">{netProfit} ليرة</span>
               </div>
             </div>
