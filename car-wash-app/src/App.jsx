@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
   Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
-  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet 
+  RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet,
+  LogOut, CheckCircle, UsersRound
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -25,6 +26,12 @@ export default function App() {
       localStorage.removeItem('carWash_currentUser');
     }
   }, [currentUser]);
+
+  // ✅ إضافة دالة تسجيل الخروج لتجنب التعليق عند الضغط على خروج
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('carWash_currentUser');
+  };
 
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
@@ -58,7 +65,6 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // نظام التنبيهات الاحترافي للمبرمج
   const [programmerToast, setProgrammerToast] = useState(null);
 
   const showProgrammerToast = (message, type = 'success') => {
@@ -68,7 +74,6 @@ export default function App() {
     }, 10000);
   };
 
-  // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
     const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
       if (!snapshot.empty) {
@@ -223,19 +228,16 @@ export default function App() {
     }, 600);
   };
 
-  // ✅ تم إصلاح مشكلة تعليق صفحة تسجيل الدخول بالاعتماد على التحقق المحلي السريع والسلس
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) return alert('الرجاء إدخال البريد الإلكتروني وكلمة المرور');
 
     try {
-      // 1. حساب المبرمج الرئيسي
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
         setCurrentUser({ email: inputEmail, role: 'programmer', name: 'المبرمج (المدير العام)' });
         return;
       }
 
-      // 2. التحقق من صاحب المحل (المالك)
       const ownedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === inputEmail.toLowerCase());
       if (ownedShops.length > 0) {
         const activeOrValidShops = ownedShops.filter(s => s.status !== 'suspended');
@@ -257,7 +259,6 @@ export default function App() {
         return;
       }
 
-      // 3. التحقق من العامل
       const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase() && s.workerPass === inputPassword);
       if (targetShop) {
         if (targetShop.status === 'suspended') {
@@ -744,7 +745,6 @@ export default function App() {
 
     const clientsList = Object.values(clientsMap);
 
-    // تصفية وعزل الحسابات النشطة عن الحسابات المعلقة/الملغاة
     const activeClientsList = clientsList.filter(client => client.shopsList.some(s => s.status === 'active'));
     const suspendedClientsList = clientsList.filter(client => client.shopsList.every(s => s.status === 'suspended'));
 
@@ -768,7 +768,6 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
-        {/* 🔔 شريط التنبيهات العائم الاحترافي (مدة 10 ثواني + زر X للإغلاق) */}
         {programmerToast && (
           <div className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 min-w-[320px] max-w-lg">
             <div className={`p-2 rounded-xl ${programmerToast.type === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
@@ -835,7 +834,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* تبويب 1: العملاء النشطون (مع إخفاء الإيميل) */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
@@ -890,7 +888,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب الحسابات المعلقة والمؤرشفة (معزولة تماماً) */}
           {programmerTab === 'suspendedClients' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-amber-900 text-lg flex items-center gap-2">
@@ -1269,7 +1266,7 @@ export default function App() {
     );
   }
 
-  // ================= شاشة العامل (الأصلية 100%) =================
+  // ================= شاشة العامل =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1509,7 +1506,7 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك - النسخة الأصلية المتكاملة 100%) =================
+  // ================= لوحة صاحب المحل =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
