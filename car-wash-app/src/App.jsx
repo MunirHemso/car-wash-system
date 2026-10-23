@@ -581,6 +581,13 @@ export default function App() {
     printWindow.document.close();
   };
 
+  const handleLogout = async () => {
+    try { await signOut(auth); } catch (e) {}
+    localStorage.removeItem('carWash_currentUser');
+    setCurrentUser(null);
+    setSelectedInvoice(null);
+  };
+
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -659,7 +666,7 @@ export default function App() {
     try {
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
         alert('تم التحديث بنجاح ✏️');
@@ -710,7 +717,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (SaaS Admin) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (مع كافة التعديلات التجارية الجديدة) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -829,7 +836,7 @@ export default function App() {
 
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  <Users className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
+                  <UsersRound className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {regularClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء.</p> : regularClients.map((client, idx) => (
@@ -1132,7 +1139,7 @@ export default function App() {
                     <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء</span>
                     <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length} عميل</h3>
                   </div>
-                  <div className="bg-purple-50 p-4 rounded-2xl"><Users size={28} className="text-purple-600" /></div>
+                  <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
@@ -1207,7 +1214,7 @@ export default function App() {
     );
   }
 
-  // ================= شاشة العامل (الأصلية 100%) =================
+  // ================= شاشة العامل (النسخة القديمة الأصلية 100%) =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1217,10 +1224,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
-          <div>
-            <h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1>
-            <span className="text-xs text-cyan-300 font-medium">شاشة العامل</span>
-          </div>
+          <div><h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1><span className="text-xs text-cyan-300 font-medium">شاشة العامل</span></div>
           <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer">خروج</button>
         </header>
 
@@ -1447,7 +1451,7 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك - الأصلية 100%) =================
+  // ================= لوحة صاحب المحل (المالك - النسخة الأصلية المتكاملة 100%) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
