@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Car, Shield, Clock, Users, Wrench, Lock, Unlock, 
-  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp
+  Search, CreditCard, Banknote, LogOut, Building, Plus, CheckCircle, Printer, FileText, Camera, Calendar, Phone, MapPin, Tag, User, Settings, DollarSign, BarChart3, Key, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, RefreshCw, Bike, Bell, CheckSquare, Award, UsersRound, FileSpreadsheet, UserPlus, Percent, Wallet, TrendingUp, Layers
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
@@ -43,6 +43,7 @@ export default function App() {
       status: 'active',
       subscriptionType: 'trial',
       subscriptionExpiry: '2026-11-01',
+      discountPercent: 0, // نسبة الخصم المباشر
       suspendedAt: null
     }
   ]);
@@ -54,14 +55,9 @@ export default function App() {
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة' }
   ]);
 
-  // نظام الخصومات الجديد
-  const [discountsList, setDiscountsList] = useState([
-    { id: 1, code: 'WELCOME10', percent: 10, description: 'خصم ترحيبي 10%' },
-    { id: 2, code: 'VIP25', percent: 25, description: 'خصم خاص 25%' }
-  ]);
-
-  const [newDiscountCode, setNewDiscountCode] = useState('');
-  const [newDiscountPercent, setNewDiscountPercent] = useState('');
+  // حقول تخصيص خصم مباشر للعميل
+  const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
+  const [directDiscountValue, setDirectDiscountValue] = useState('');
 
   // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
@@ -317,6 +313,7 @@ export default function App() {
         status: 'active',
         subscriptionType: 'trial',
         subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
+        discountPercent: 0,
         suspendedAt: null
       };
 
@@ -335,6 +332,26 @@ export default function App() {
       setProgrammerTab('clients');
     } catch (error) {
       alert('حدث خطأ أثناء إضافة العميل: ' + error.message);
+    }
+  };
+
+  // تطبيق خصم مباشر على جميع فروع العميل
+  const handleApplyDirectDiscountToClient = async (e) => {
+    e.preventDefault();
+    if (!targetClientEmailForDiscount || directDiscountValue === '') return alert('اختر العميل وأدخل نسبة الخصم');
+
+    try {
+      const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === targetClientEmailForDiscount.toLowerCase());
+      for (const shop of clientShops) {
+        await updateDoc(doc(db, "platformShops", String(shop.id)), {
+          discountPercent: Number(directDiscountValue)
+        });
+      }
+      alert(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`);
+      setDirectDiscountValue('');
+      setTargetClientEmailForDiscount('');
+    } catch (e) {
+      alert('حدث خطأ أثناء تطبيق الخصم.');
     }
   };
 
@@ -570,6 +587,7 @@ export default function App() {
         status: 'active',
         subscriptionType: 'trial',
         subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
+        discountPercent: 0,
         suspendedAt: null
       };
 
@@ -652,7 +670,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات، وكشوفات الاشتراكات المالية) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات المباشرة، وتصنيف حسب حجم الفروع) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -663,6 +681,7 @@ export default function App() {
           ownerEmail: email,
           taxNumber: s.taxNumber || 'غير مسجل',
           phone: s.phone || '+90...',
+          discountPercent: s.discountPercent || 0,
           shopsList: []
         };
       }
@@ -674,22 +693,32 @@ export default function App() {
     const suspendedShopsCount = shops.filter(s => s.status === 'suspended').length;
     const selectedClient = clientsList.find(c => c.ownerEmail === selectedClientEmail);
 
-    // حساب إجمالي الإيرادات المتوقعة من الاشتراكات الفعالة
+    // حساب إجمالي الإيرادات بعد الخصومات المباشرة
     let totalSubscriptionRevenue = 0;
     clientsList.forEach(client => {
       const firstShop = client.shopsList[0] || {};
-      const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+      const basePrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+      const discount = client.discountPercent || 0;
+      const discountedPrice = basePrice * (1 - discount / 100);
+
       if (client.shopsList.some(s => s.status === 'active')) {
-        totalSubscriptionRevenue += planPrice * client.shopsList.length;
+        totalSubscriptionRevenue += discountedPrice * client.shopsList.length;
       }
     });
+
+    // العملاء الذين لديهم خصومات مفعلة (> 0)
+    const clientsWithDiscounts = clientsList.filter(c => c.discountPercent > 0);
+
+    // تصنيف العملاء حسب كمية الفروع
+    const vipClients = clientsList.filter(c => c.shopsList.length >= 3);
+    const regularClients = clientsList.filter(c => c.shopsList.length < 3);
 
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Shield className="text-purple-400" size={24} />
-            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، والاشتراكات)</span>
+            <span className="font-bold text-white text-lg">لوحة المدير العام (إدارة المنصة، العملاء، والخصومات المباشرة)</span>
           </div>
           <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer flex items-center gap-1">
             <LogOut size={14} /> خروج
@@ -698,16 +727,16 @@ export default function App() {
 
         <nav className="bg-white border-b px-6 py-3 flex gap-6 text-sm font-bold flex-wrap">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'clients' && !selectedClientEmail ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            👥 عملاء المنصة (أصحاب المحلات وعدد فروعهم)
+            👥 عملاء المنصة (أصحاب المحلات)
           </button>
           <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'addClient' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             ➕ إضافة عميل جديد
           </button>
           <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'pricingPlans' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            💰 باقات الأسعار والاشتراكات
+            💰 باقات الأسعار
           </button>
-          <button onClick={() => { setProgrammerTab('discounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'discounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
-            🎁 إدارة الخصومات
+          <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'directDiscounts' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
+            🏷️ نظام الخصومات المباشرة (نسب مئوية)
           </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`pb-2 border-b-2 cursor-pointer ${programmerTab === 'subscriptionsReport' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-700'}`}>
             📑 كشف حسابات الاشتراكات المالية
@@ -717,11 +746,11 @@ export default function App() {
         <main className="max-w-7xl mx-auto p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-              <span className="text-gray-500 text-sm">إجمالي العملاء (أصحاب المحلات)</span>
+              <span className="text-gray-500 text-sm">إجمالي العملاء</span>
               <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100">
-              <span className="text-gray-500 text-sm">إجمالي الفروع في المنصة</span>
+              <span className="text-gray-500 text-sm">إجمالي الفروع</span>
               <h3 className="text-3xl font-black text-blue-600 mt-1">{shops.length}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100">
@@ -729,93 +758,112 @@ export default function App() {
               <h3 className="text-3xl font-black text-emerald-600 mt-1">{activeShopsCount}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
-              <span className="text-gray-500 text-sm">إجمالي إيرادات الاشتراكات</span>
+              <span className="text-gray-500 text-sm">إجمالي الإيرادات (بعد الخصم)</span>
               <h3 className="text-3xl font-black text-purple-600 mt-1">{totalSubscriptionRevenue} ليرة</h3>
             </div>
           </div>
 
-          {/* تبويب 1: قائمة العملاء (مع عرض عدد الفروع) */}
+          {/* تبويب 1: عرض قائمة العملاء وتصنيفهم حسب كمية الفروع */}
           {programmerTab === 'clients' && !selectedClient && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
-              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                <UsersRound className="text-purple-600" size={22} /> قائمة عملاء المنصة (أصحاب المحلات وعدد فروعهم)
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {clientsList.map((client, idx) => {
-                  const clientActiveShops = client.shopsList.filter(s => s.status === 'active').length;
-                  return (
-                    <div key={idx} className="p-5 rounded-2xl border bg-gray-50 hover:bg-purple-50/30 transition flex flex-col justify-between space-y-4">
+            <div className="space-y-6">
+              {/* قسم عملاء VIP (متعدد الفروع) */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
+                <h3 className="font-bold text-purple-900 text-lg flex items-center gap-2">
+                  <Award className="text-purple-600" size={22} /> كبار العملاء / VIP (3 فروع أو أكثر)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {vipClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء VIP حالياً.</p> : vipClients.map((client, idx) => (
+                    <div key={idx} className="p-5 rounded-2xl border-2 border-purple-200 bg-purple-50/20 flex flex-col justify-between space-y-4">
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
-                          <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
-                          <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-xl shadow-xs">
-                            🏢 {client.shopsList.length} فروع مغاسل
+                          <h4 className="font-black text-lg text-slate-900">⭐ {client.ownerName}</h4>
+                          <span className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-xs">
+                            🏢 {client.shopsList.length} فروع
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">📧 الإيميل: {client.ownerEmail}</p>
                         <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
-                        <p className="text-xs text-gray-600">🏛️ الرقم الضريبي: <span className="font-bold text-slate-800">{client.taxNumber}</span></p>
+                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
                       </div>
-
-                      <div className="flex justify-between items-center pt-3 border-t">
-                        <span className="text-xs font-bold text-emerald-600">الفروع النشطة: {clientActiveShops} من {client.shopsList.length}</span>
-                        <button 
-                          onClick={() => setSelectedClientEmail(client.ownerEmail)}
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer shadow-sm flex items-center gap-1.5"
-                        >
-                          عرض الملف الكامل وفروعه 🔍
-                        </button>
-                      </div>
+                      <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
+                        عرض الملف الكامل وفروعه 🔍
+                      </button>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              </div>
+
+              {/* قسم العملاء العاديين (فرع أو فرعين) */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                  <UsersRound className="text-blue-600" size={22} /> العملاء العاديون (1 إلى 2 فرع)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {regularClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء.</p> : regularClients.map((client, idx) => (
+                    <div key={idx} className="p-5 rounded-2xl border bg-gray-50 flex flex-col justify-between space-y-4">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-xl shadow-xs">
+                            🏢 {client.shopsList.length} فرع
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600">📧 الإيميل: {client.ownerEmail}</p>
+                        <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
+                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
+                      </div>
+                      <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
+                        عرض الملف الكامل وفروعه 🔍
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* تبويب 2: إضافة عميل جديد مع 7 أيام تجريبية */}
+          {/* تبويب 2: إضافة عميل جديد */}
           {programmerTab === 'addClient' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-2xl mx-auto space-y-6">
               <div className="flex items-center gap-3 border-b pb-4">
                 <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><UserPlus size={24} /></div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">إضافة عميل جديد للنظام (صاحب مغاسل جديد)</h3>
-                  <p className="text-xs text-gray-500">سيحصل العميل تلقائياً على فترة تجريبية مجانية لمدة 7 أيام منذ لحظة الإنشاء</p>
+                  <h3 className="text-xl font-bold text-gray-900">إضافة عميل جديد للنظام</h3>
+                  <p className="text-xs text-gray-500">سيحصل العميل تلقائياً على فترة تجريبية مجانية لمدة 7 أيام</p>
                 </div>
               </div>
 
               <form onSubmit={handleProgrammerAddClient} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم العميل الكامل (صاحب المحل) *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم العميل الكامل *</label>
                     <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني للعميل (Gmail) *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني (Gmail) *</label>
                     <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم هاتف العميل</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف</label>
                     <input type="text" placeholder="+90 500 000 0000" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي / المعرف الضريبي</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي</label>
                     <input type="text" placeholder="الرقم الضريبي للمؤسسة" value={newClientTax} onChange={e => setNewClientTax(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                   </div>
                 </div>
 
                 <div className="border-t pt-4 space-y-3">
-                  <h4 className="font-bold text-sm text-purple-700">تفاصيل الفرع الأول لهذا العميل:</h4>
-                  <input type="text" placeholder="اسم الفرع الأول (مثال: مغسلة النور - الفرع الرئيسي) *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  <h4 className="font-bold text-sm text-purple-700">تفاصيل الفرع الأول:</h4>
+                  <input type="text" placeholder="اسم الفرع الأول *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">إيميل العامل للفرع *</label>
-                      <input type="email" placeholder="worker.khaled@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                      <label className="block text-xs font-bold text-gray-700 mb-1">إيميل العامل *</label>
+                      <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">كلمة سر العامل *</label>
@@ -823,24 +871,18 @@ export default function App() {
                     </div>
                   </div>
 
-                  <input type="text" placeholder="عنوان الفرع (المنطقة والشارع)" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                  <input type="text" placeholder="عنوان الفرع" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                 </div>
 
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل الجديد ومنحه 7 أيام تجريبية 🚀</button>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل ومنحه 7 أيام تجريبية 🚀</button>
               </form>
             </div>
           )}
 
-          {/* تبويب 3: باقات الأسعار والاشتراكات */}
+          {/* تبويب 3: باقات الأسعار */}
           {programmerTab === 'pricingPlans' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
-              <div className="flex justify-between items-center border-b pb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
-                  <p className="text-xs text-gray-500">تعديل أسعار الباقات والخطط التي تظهر لعملائك</p>
-                </div>
-              </div>
-
+              <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {pricingPlans.map(plan => (
                   <div key={plan.id} className="p-5 border rounded-2xl bg-gray-50 flex flex-col justify-between space-y-4">
@@ -848,66 +890,93 @@ export default function App() {
                       <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
                       <p className="text-2xl font-black text-purple-600 mt-2">{plan.price} {plan.currency}</p>
                     </div>
-                    <div className="flex gap-2 pt-3 border-t">
-                      <input 
-                        type="number" 
-                        defaultValue={plan.price} 
-                        onChange={e => {
-                          const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
-                          setPricingPlans(updated);
-                        }}
-                        className="w-full px-3 py-1.5 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
-                      />
-                    </div>
+                    <input 
+                      type="number" 
+                      defaultValue={plan.price} 
+                      onChange={e => {
+                        const updated = pricingPlans.map(p => p.id === plan.id ? {...p, price: Number(e.target.value)} : p);
+                        setPricingPlans(updated);
+                      }}
+                      className="w-full px-3 py-1.5 border rounded-xl text-sm font-bold text-gray-900 bg-white" 
+                    />
                   </div>
                 ))}
               </div>
-
-              <div className="p-4 bg-purple-50 rounded-2xl border border-purple-200 flex justify-between items-center">
-                <span className="text-xs font-bold text-purple-900">💡 ملاحظة: تعديل أسعار الباقات هنا محدث وجاهز.</span>
-                <button onClick={() => alert('تم حفظ أسعار الباقات بنجاح!')} className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
+              <div className="flex justify-end">
+                <button onClick={() => alert('تم حفظ الأسعار بنجاح!')} className="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer">حفظ الأسعار ✅</button>
               </div>
             </div>
           )}
 
-          {/* تبويب 4: إدارة الخصومات والعروض */}
-          {programmerTab === 'discounts' && (
+          {/* تبويب 4: نظام الخصومات المباشرة للعملاء وقائمة العملاء الذين لديهم خصومات */}
+          {programmerTab === 'directDiscounts' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
-              <div className="flex justify-between items-center border-b pb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">🎁 نظام الخصومات والعروض الترويجية</h3>
-                  <p className="text-xs text-gray-500">أنشئ أكواد خصم للعملاء عند تجديد الاشتراكات</p>
-                </div>
+              <div className="border-b pb-4">
+                <h3 className="text-xl font-bold text-gray-900">🏷️ نظام الخصومات المباشرة على الاشتراكات</h3>
+                <p className="text-xs text-gray-500">اختر العميل وحدد نسبة الخصم المباشر (مثلاً خصم 50% على الاشتراك الشهري أو السنوي)</p>
               </div>
 
-              <form onSubmit={e => {
-                e.preventDefault();
-                if (!newDiscountCode || !newDiscountPercent) return alert('أدخل الكود ونسبة الخصم');
-                setDiscountsList([...discountsList, { id: Date.now(), code: newDiscountCode.toUpperCase(), percent: Number(newDiscountPercent), description: 'خصم ترويجي' }]);
-                setNewDiscountCode('');
-                setNewDiscountPercent('');
-                alert('تمت إضافة كود الخصم بنجاح! 🎉');
-              }} className="flex gap-3 bg-gray-50 p-4 rounded-2xl border">
-                <input type="text" placeholder="كود الخصم (مثال: SALE50)" value={newDiscountCode} onChange={e => setNewDiscountCode(e.target.value)} className="px-3 py-2 border rounded-xl text-sm uppercase bg-white text-gray-900 font-bold flex-1" required />
-                <input type="number" placeholder="النسبة %" value={newDiscountPercent} onChange={e => setNewDiscountPercent(e.target.value)} className="px-3 py-2 border rounded-xl text-sm w-28 bg-white text-gray-900 font-bold" required />
-                <button type="submit" className="bg-purple-600 text-white px-5 py-2 rounded-xl text-xs font-bold cursor-pointer">إضافة كود ➕</button>
+              {/* نموذج تطبيق خصم مباشر */}
+              <form onSubmit={handleApplyDirectDiscountToClient} className="bg-purple-50/60 p-5 rounded-2xl border border-purple-200 space-y-3">
+                <h4 className="font-bold text-sm text-purple-900">تطبيق خصم مباشر على عميل محدد:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <select 
+                    value={targetClientEmailForDiscount} 
+                    onChange={e => setTargetClientEmailForDiscount(e.target.value)} 
+                    className="px-3 py-2.5 border rounded-xl text-sm bg-white text-gray-900 font-bold"
+                    required
+                  >
+                    <option value="">-- اختر العميل (صاحب المحل) --</option>
+                    {clientsList.map((c, i) => <option key={i} value={c.ownerEmail}>{c.ownerName} ({c.ownerEmail})</option>)}
+                  </select>
+                  <input 
+                    type="number" 
+                    placeholder="نسبة الخصم % (مثال: 50)" 
+                    value={directDiscountValue} 
+                    onChange={e => setDirectDiscountValue(e.target.value)} 
+                    className="px-3 py-2.5 border rounded-xl text-sm bg-white text-gray-900 font-bold" 
+                    required 
+                  />
+                </div>
+                <div className="flex justify-end pt-1">
+                  <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs cursor-pointer shadow-sm">
+                    تطبيق الخصم المباشر على العميل 🏷️✨
+                  </button>
+                </div>
               </form>
 
-              <div className="space-y-3">
-                {discountsList.map(disc => (
-                  <div key={disc.id} className="p-4 rounded-xl border bg-white flex justify-between items-center">
-                    <div>
-                      <span className="font-mono font-black text-purple-700 text-base">🏷️ {disc.code}</span>
-                      <p className="text-xs text-gray-600 mt-0.5">نسبة الخصم: <strong className="text-emerald-600">{disc.percent}%</strong> | {disc.description}</p>
+              {/* قائمة العملاء الذين لديهم خصومات مفعلة حالياً */}
+              <div className="space-y-3 pt-4">
+                <h4 className="font-bold text-gray-900 text-base">قائمة العملاء الذين لديهم خصومات مفعلة ({clientsWithDiscounts.length}):</h4>
+                {clientsWithDiscounts.length === 0 ? (
+                  <p className="text-xs text-gray-500">لا توجد خصومات مفعلة لأي عميل حالياً.</p>
+                ) : (
+                  clientsWithDiscounts.map((client, idx) => (
+                    <div key={idx} className="p-4 rounded-xl border bg-emerald-50/50 border-emerald-200 flex justify-between items-center text-sm">
+                      <div>
+                        <span className="font-bold text-slate-900">👤 {client.ownerName} ({client.ownerEmail})</span>
+                        <p className="text-xs text-emerald-700 font-bold mt-0.5">نسبة الخصم المفعلة: {client.discountPercent}% على جميع فروعه</p>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === client.ownerEmail.toLowerCase());
+                          for (const shop of clientShops) {
+                            await updateDoc(doc(db, "platformShops", String(shop.id)), { discountPercent: 0 });
+                          }
+                          alert('تم إزالة الخصم عن العميل بنجاح.');
+                        }}
+                        className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        إلغاء الخصم ❌
+                      </button>
                     </div>
-                    <button onClick={() => setDiscountsList(discountsList.filter(d => d.id !== disc.id))} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">حذف الكود</button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           )}
 
-          {/* الملف الشخصي والضريبي، التعديل، والتعليق لمدة 3 أشهر للعميل المحدد */}
+          {/* الملف الشخصي والضريبي، التعديل، والتعليق لمدة 3 أشهر */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
@@ -974,13 +1043,13 @@ export default function App() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'monthly')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد شهري للكل (500 ليرة) 🗓️
+                    تجديد شهري للكل 🗓️
                   </button>
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'yearly')} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    تجديد سنوي للكل (5000 ليرة) 📅
+                    تجديد سنوي للكل 📅
                   </button>
                   <button onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, 'lifetime')} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                    مدى الحياة للكل (15000 ليرة) ♾️
+                    مدى الحياة للكل ♾️
                   </button>
                 </div>
               </div>
@@ -1020,14 +1089,13 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 5: كشف حسابات الاشتراكات المالية (معاد تصميمه بالكامل) */}
+          {/* تبويب 5: كشف حسابات الاشتراكات المالية (تصميم جديد ومختلف بالكامل) */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="space-y-6">
-              {/* بطاقات المجموع الإيرادي */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gradient-to-r from-purple-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex items-center justify-between">
                   <div>
-                    <span className="text-purple-300 text-xs font-bold uppercase tracking-wider">إجمالي الإيرادات المتوقعة</span>
+                    <span className="text-purple-300 text-xs font-bold uppercase tracking-wider">إجمالي الإيرادات (بعد الخصومات)</span>
                     <h3 className="text-3xl font-black text-emerald-400 mt-1">{totalSubscriptionRevenue} ليرة</h3>
                   </div>
                   <div className="bg-white/10 p-4 rounded-2xl"><Wallet size={28} className="text-purple-300" /></div>
@@ -1035,7 +1103,7 @@ export default function App() {
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء المشتركين</span>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء</span>
                     <h3 className="text-3xl font-black text-slate-900 mt-1">{clientsList.length} عميل</h3>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
@@ -1050,11 +1118,11 @@ export default function App() {
                 </div>
               </div>
 
-              {/* الجدول المعاد تصميمه لعرض العملاء وعدد فروعهم واشتراكاتهم بدلاً من تفصيل الفروع بشكل عشوائي */}
+              {/* الجدول الجديد والمخصص لعرض العملاء وخصوماتهم المالية */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف حسابات الاشتراكات المالية (حسب العملاء)
+                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف الحسابات المالي للاشتراكات (حسب العملاء والخصومات)
                   </h3>
                   <button 
                     onClick={handleRefreshData} 
@@ -1071,11 +1139,11 @@ export default function App() {
                     <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                       <tr>
                         <th className="p-3">صاحب المحل (العميل)</th>
-                        <th className="p-3">الرقم الضريبي</th>
-                        <th className="p-3">عدد الفروع المملوكة</th>
-                        <th className="p-3">نوع الباقة النشطة</th>
-                        <th className="p-3">إيراد العميل المتوقع</th>
-                        <th className="p-3">تاريخ انتهاء الاشتراك</th>
+                        <th className="p-3">عدد الفروع</th>
+                        <th className="p-3">نوع الباقة</th>
+                        <th className="p-3">نسبة الخصم المباشر</th>
+                        <th className="p-3">الإيراد الصافي (بعد الخصم)</th>
+                        <th className="p-3">انتهاء الاشتراك</th>
                         <th className="p-3">الحالة العامة</th>
                       </tr>
                     </thead>
@@ -1083,16 +1151,17 @@ export default function App() {
                       {clientsList.map((client, idx) => {
                         const firstShop = client.shopsList[0] || {};
                         const hasActiveShop = client.shopsList.some(s => s.status === 'active');
-                        const planPrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
-                        const totalEstimated = planPrice * client.shopsList.length;
+                        const basePrice = firstShop.subscriptionType === 'yearly' ? 5000 : firstShop.subscriptionType === 'lifetime' ? 15000 : firstShop.subscriptionType === 'trial' ? 0 : 500;
+                        const disc = client.discountPercent || 0;
+                        const finalPrice = (basePrice * (1 - disc / 100)) * client.shopsList.length;
 
                         return (
                           <tr key={idx} className="hover:bg-gray-50">
                             <td className="p-3 font-bold text-slate-900">👤 {client.ownerName} <span className="text-xs text-gray-500 block font-normal">{client.ownerEmail}</span></td>
-                            <td className="p-3 font-mono">{client.taxNumber}</td>
                             <td className="p-3 font-bold text-purple-700">🏢 {client.shopsList.length} فروع</td>
-                            <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : firstShop.subscriptionType === 'yearly' ? 'سنوي 📅' : firstShop.subscriptionType === 'lifetime' ? 'مدى الحياة ♾️' : 'شهري 🗓️'}</td>
-                            <td className="p-3 font-black text-emerald-600">{totalEstimated} ليرة</td>
+                            <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي' : firstShop.subscriptionType}</td>
+                            <td className="p-3 font-bold text-emerald-600">{disc > 0 ? `${disc}% خصم` : 'بدون خصم'}</td>
+                            <td className="p-3 font-black text-purple-700">{finalPrice} ليرة</td>
                             <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
                             <td className="p-3">
                               <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${hasActiveShop ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
@@ -1180,7 +1249,7 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك) مع التحذير التلقائي لانتهاء الاشتراك =================
+  // ================= لوحة صاحب المحل (المالك) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
@@ -1246,11 +1315,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
-      {/* ⚠️ شريط التحذير بانتهاء الاشتراك بصفحة المالك */}
       {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
         <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
           <AlertTriangle size={18} />
-          <span>تحذير هام: سينتهي اشتراك هذا الفرع ({currentShop.name}) خلال {daysLeft} أيام! يرجى التواصل مع الإدارة لتجديد الاشتراك لتفادي توقف الخدمة.</span>
+          <span>تحذير هام: سينتهي اشتراك هذا الفرع ({currentShop.name}) خلال {daysLeft} أيام! يرجى التواصل مع الإدارة لتجديد الاشتراك.</span>
         </div>
       )}
       {!isAllShops && currentShop && daysLeft < 0 && (
