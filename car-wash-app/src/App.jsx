@@ -286,7 +286,6 @@ export default function App() {
     }
   };
 
-  // 🚀 إضافة عميل جديد مع فترة تجريبية 7 أيام تلقائياً
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
@@ -296,7 +295,7 @@ export default function App() {
     try {
       const shopId = Date.now();
       const trialExpiry = new Date();
-      trialExpiry.setDate(trialExpiry.getDate() + 7); // 7 أيام تجريبية
+      trialExpiry.setDate(trialExpiry.getDate() + 7);
 
       const newClientShopObj = {
         id: shopId,
@@ -334,7 +333,6 @@ export default function App() {
     }
   };
 
-  // تطبيق خصم مباشر على جميع فروع العميل
   const handleApplyDirectDiscountToClient = async (e) => {
     e.preventDefault();
     if (!targetClientEmailForDiscount || directDiscountValue === '') return alert('اختر العميل وأدخل نسبة الخصم');
@@ -354,7 +352,6 @@ export default function App() {
     }
   };
 
-  // 🚀 تحديث بيانات العميل الشخصية أو الضريبية
   const handleSaveClientEdits = async (e) => {
     e.preventDefault();
     if (!editingClientData) return;
@@ -375,9 +372,8 @@ export default function App() {
     }
   };
 
-  // 🚀 تعليق/أرشفة العميل لمدة 3 أشهر بدل الحذف النهائي
   const handleSuspendClientForMonths = async (clientEmail) => {
-    if (!window.confirm('هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟ يمكنه تفعيلها مجدداً لاحقاً.')) return;
+    if (!window.confirm('هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟')) return;
 
     try {
       const threeMonthsLater = new Date();
@@ -548,10 +544,12 @@ export default function App() {
         <title>فاتورة - ${inv.plate}</title>
         <style>
           body { font-family: Tahoma, sans-serif; padding: 20px; text-align: right; }
-          .box { max-width: 400px; margin: auto; border: 2px solid #000; padding: 20px; border-radius: 10px; }
-          .center { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; }
+          .box { max-width: 450px; margin: auto; border: 2px solid #0f172a; padding: 20px; border-radius: 15px; }
+          .center { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; }
           .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
-          .total { background: #e0f2fe; padding: 10px; text-align: center; font-weight: bold; margin-top: 15px; border-radius: 8px; }
+          .photos { display: flex; justify-content: space-around; margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 10px; text-align: center; }
+          .photos img { width: 45%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; }
+          .total { background: #ecfdf5; color: #047857; padding: 10px; text-align: center; font-weight: bold; margin-top: 15px; border-radius: 8px; border: 1px solid #a7f3d0; }
         </style>
       </head>
       <body>
@@ -563,7 +561,17 @@ export default function App() {
           <div class="row"><span>المركبة:</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
           <div class="row"><span>اللوحة:</span><strong>${inv.plate}</strong></div>
           <div class="row"><span>الخدمة:</span><strong>${inv.service}</strong></div>
+          <div class="row"><span>وقت العمل:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
           <div class="row"><span>الدفع:</span><strong>${inv.method}</strong></div>
+          ${inv.notes ? `<div class="row"><span>ملاحظات:</span><strong>${inv.notes}</strong></div>` : ''}
+
+          ${(inv.beforePhoto || inv.afterPhoto) ? `
+            <div class="photos">
+              ${inv.beforePhoto ? `<div><span style="font-size:10px;">قبل الغسيل</span><img src="${inv.beforePhoto}"/></div>` : ''}
+              ${inv.afterPhoto ? `<div><span style="font-size:10px;">بعد الغسيل</span><img src="${inv.afterPhoto}"/></div>` : ''}
+            </div>
+          ` : ''}
+
           <div class="total">الإجمالي: ${inv.price} ليرة</div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
@@ -580,23 +588,6 @@ export default function App() {
     setSelectedInvoice(null);
   };
 
-  const handleSaveEditShop = async (e) => {
-    e.preventDefault();
-    if (!editingShop) return;
-    try {
-      await updateDoc(doc(db, "platformShops", String(editingShop.id)), {
-        name: editingShop.name,
-        workerEmail: editingShop.workerEmail,
-        workerPass: editingShop.workerPass,
-        phone: editingShop.phone,
-        address: editingShop.address
-      });
-      setEditingShop(null);
-      alert('تم تعديل بيانات الفرع بنجاح!');
-    } catch (e) { alert('خطأ أثناء الحفظ'); }
-  };
-
-  // إضافة فرع جديد من قبل المالك مع 7 أيام تجريبية
   const handleOwnerAddShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
@@ -662,6 +653,8 @@ export default function App() {
     setTxNotes(t.notes || '');
     setStartTime(t.startTime);
     setEndTime(t.endTime);
+    if (t.beforePhoto) setBeforePhoto(t.beforePhoto);
+    if (t.afterPhoto) setAfterPhoto(t.afterPhoto);
   };
 
   const handleAddTransaction = async (e) => {
@@ -673,10 +666,10 @@ export default function App() {
     try {
       if (editingTxId) {
         await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), method: payMethod, notes: txNotes
+          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
-        alert('تم التحديث بنجاح');
+        alert('تم التحديث بنجاح ✏️');
       } else {
         await addDoc(collection(db, "shops", String(shopId), "transactions"), {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
@@ -724,7 +717,7 @@ export default function App() {
     );
   }
 
-  // ================= 🌟 واجهة المبرمج الاحترافية (إدارة العملاء، باقات الأسعار، الخصومات المباشرة، وتصنيف حسب حجم الفروع) =================
+  // ================= 🌟 واجهة المبرمج الاحترافية (مع كافة التعديلات التجارية الجديدة) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -813,7 +806,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* تبويب 1: عرض قائمة العملاء وتصنيفهم حسب كمية الفروع */}
           {programmerTab === 'clients' && !selectedClient && (
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
@@ -870,7 +862,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 2: إضافة عميل جديد */}
           {programmerTab === 'addClient' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-2xl mx-auto space-y-6">
               <div className="flex items-center gap-3 border-b pb-4">
@@ -927,7 +918,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 3: باقات الأسعار */}
           {programmerTab === 'pricingPlans' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
               <h3 className="text-xl font-bold text-gray-900">💰 إدارة باقات الأسعار وأسعار الاشتراكات</h3>
@@ -956,7 +946,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 4: نظام الخصومات المباشرة وقائمة العملاء المستفيدين */}
           {programmerTab === 'directDiscounts' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
               <div className="border-b pb-4">
@@ -1022,7 +1011,6 @@ export default function App() {
             </div>
           )}
 
-          {/* الملف الشخصي والضريبي، التعديل، والتعليق لمدة 3 أشهر */}
           {selectedClient && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
@@ -1135,7 +1123,6 @@ export default function App() {
             </div>
           )}
 
-          {/* تبويب 5: كشف حسابات الاشتراكات المالية */}
           {programmerTab === 'subscriptionsReport' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1164,7 +1151,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* الجدول الجديد والمخصص لعرض العملاء وخصوماتهم المالية */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -1228,7 +1214,7 @@ export default function App() {
     );
   }
 
-  // ================= شاشة العامل =================
+  // ================= شاشة العامل (النسخة القديمة الأصلية 100%) =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1238,55 +1224,225 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
-          <div><h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1><span className="text-xs text-cyan-300">شاشة العامل</span></div>
-          <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white">خروج</button>
+          <div><h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1><span className="text-xs text-cyan-300 font-medium">شاشة العامل</span></div>
+          <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer">خروج</button>
         </header>
+
         <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-          {shopAnnouncementsList.map(ann => (
-            <div key={ann.id} className="bg-amber-500 text-white p-4 rounded-2xl flex items-center gap-3 shadow-md">
-              <Bell size={22} /><div><h4 className="font-black text-sm">{ann.title}</h4><p className="text-xs">{ann.text}</p></div>
+          {shopAnnouncementsList.length > 0 && (
+            <div className="space-y-2">
+              {shopAnnouncementsList.map(ann => (
+                <div key={ann.id} className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-4 rounded-2xl shadow-md flex items-start gap-3">
+                  <Bell className="mt-0.5 shrink-0 animate-bounce" size={22} />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-black text-sm">{ann.title}</h4>
+                      <span className="text-[11px] bg-amber-700/50 px-2 py-0.5 rounded-lg">{ann.date}</span>
+                    </div>
+                    <p className="text-xs text-amber-100 mt-1">{ann.text}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-              <h3 className="font-bold text-gray-800"><Car className="inline ml-1 text-blue-600" /> {editingTxId ? 'تعديل غسيل' : 'تسجيل غسيل جديد'}</h3>
+              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <Car className="text-blue-600" /> {editingTxId ? 'تعديل معلومات المركبة ✏️' : 'تسجيل غسيل جديد'}
+              </h3>
               <form onSubmit={handleAddTransaction} className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setVehicleCategory('سيارة')} className={`py-2 text-xs font-bold rounded-xl border ${vehicleCategory === 'سيارة' ? 'bg-blue-600 text-white' : 'bg-gray-50'}`}>سيارة</button>
-                  <button type="button" onClick={() => setVehicleCategory('موتور')} className={`py-2 text-xs font-bold rounded-xl border ${vehicleCategory === 'موتور' ? 'bg-blue-600 text-white' : 'bg-gray-50'}`}>موتور</button>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-gray-700">نوع المركبة *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setVehicleCategory('سيارة')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'سيارة' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
+                      <Car size={16} /> سيارة
+                    </button>
+                    <button type="button" onClick={() => setVehicleCategory('موتور')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'موتور' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
+                      <Bike size={16} /> موتور / دراجة
+                    </button>
+                  </div>
                 </div>
+
                 {vehicleCategory === 'سيارة' && (
-                  <input type="text" list="carModelsLibrary" placeholder="موديل السيارة *" value={carModel} onChange={e => setCarModel(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                )}
-                <datalist id="carModelsLibrary">{comprehensiveCarLibrary.map((c, i) => <option key={i} value={c} />)}</datalist>
-                <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 uppercase font-bold" required />
-                <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
-                  <option>غسيل خارجي فقط</option><option>غسيل خارجي وداخلي</option><option>غسيل كامل مع تلميع</option>
-                </select>
-                <input type="number" placeholder="السعر (ليرة) *" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-black" required />
-                <div className="grid grid-cols-3 gap-2">
-                  <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 text-xs font-bold rounded-xl border ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50'}`}>كاش</button>
-                  <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 text-xs font-bold rounded-xl border ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50'}`}>بنك</button>
-                  <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 text-xs font-bold rounded-xl border ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50'}`}>دين</button>
-                </div>
-                {payMethod === 'دين' && (
-                  <div className="bg-red-50 p-3 rounded-xl border space-y-2">
-                    <input type="text" placeholder="اسم الزبون *" value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900" required />
-                    <input type="text" placeholder="هاتف الزبون *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900" required />
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">اختر أو ابحث عن موديل السيارة *</label>
+                    <input 
+                      type="text" 
+                      list="carModelsLibrary" 
+                      placeholder="ابحث بالماركة أو الموديل..." 
+                      value={carModel} 
+                      onChange={e => setCarModel(e.target.value)} 
+                      className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900 font-semibold outline-none focus:ring-2 focus:ring-blue-500" 
+                      required 
+                    />
+                    <datalist id="carModelsLibrary">
+                      {comprehensiveCarLibrary.map((car, idx) => (
+                        <option key={idx} value={car} />
+                      ))}
+                    </datalist>
                   </div>
                 )}
-                <button type="submit" className="w-full bg-cyan-600 text-white py-3 rounded-xl font-bold text-sm">حفظ الطلب والتحديث 🚀</button>
+
+                <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
+                
+                <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
+                  <option>غسيل خارجي فقط</option>
+                  <option>غسيل خارجي وداخلي</option>
+                  <option>غسيل كامل مع تلميع</option>
+                  <option>غسيل موتور</option>
+                </select>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)} placeholder="وقت البدء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                  <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)} placeholder="وقت الانتهاء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">السعر (تحديد يدوي) *</label>
+                  <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">ملاحظات (اختياري)</label>
+                  <input type="text" placeholder="ملاحظات حول حالة السيارة..." value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-xs font-bold text-gray-700">توثيق حالة المركبة بالصور</label>
+                  
+                  <div className="p-3 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2">
+                    <span className="text-[11px] font-bold text-blue-900 block">صورة قبل الغسيل: {beforePhoto ? '✓ تمت الإضافة' : ''}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                        <Camera size={16} /> فتح الكاميرا
+                        <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
+                      </label>
+                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                        <ImageIcon size={16} /> من الاستوديو
+                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
+                    <span className="text-[11px] font-bold text-emerald-900 block">صورة بعد الغسيل: {afterPhoto ? '✓ تمت الإضافة' : ''}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                        <Camera size={16} /> فتح الكاميرا
+                        <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
+                      </label>
+                      <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
+                        <ImageIcon size={16} /> من الاستوديو
+                        <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-700">طريقة الدفع</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50 text-gray-800'}`}>كاش 💵</button>
+                    <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>بنك 💳</button>
+                    <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50 text-gray-800'}`}>دين ⚠️</button>
+                  </div>
+                </div>
+
+                {payMethod === 'دين' && (
+                  <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
+                    <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
+                    <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                    <input type="text" placeholder="رقم هاتف الزبون *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">
+                    {editingTxId ? 'تحديث المعلومات ✏️' : 'حفظ الطلب والتحديث 🚀'}
+                  </button>
+                  {editingTxId && (
+                    <button type="button" onClick={() => { setEditingTxId(null); setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); }} className="px-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs">إلغاء</button>
+                  )}
+                </div>
               </form>
             </div>
-            <div className="lg:col-span-2 space-y-4">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-3">
-                <h3 className="font-bold text-gray-800">المركبات المسجلة اليوم</h3>
-                {shopTx.map(t => (
-                  <div key={t.id} className="p-3 bg-gray-50 rounded-xl flex justify-between items-center text-sm border">
-                    <div><span className="font-bold text-blue-600">{t.carModel || t.vehicleCategory} | لوحة: {t.plate}</span><p className="text-xs text-gray-500">{t.service} - {t.price} ليرة ({t.method})</p></div>
-                    <button onClick={() => setSelectedInvoice({ ...t, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo })} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1"><Printer size={14} /> طباعة</button>
+
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="font-bold text-amber-800 flex items-center gap-2">⚠️ قائمة الديون المعلقة (تسديد ديون الزبائن)</h3>
+                </div>
+                {shopDebts.length === 0 ? (
+                  <p className="text-xs text-gray-400">لا توجد ديون معلقة على زبائن هذا الفرع حالياً.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {shopDebts.map(d => (
+                      <div key={d.id} className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-sm">
+                        <div>
+                          <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName} ({d.phone})</span>
+                          <p className="text-xs text-gray-600">الخدمة: {d.service} | المبلغ: <strong className="text-red-600">{d.amount} ليرة</strong></p>
+                          <span className="text-[10px] text-gray-400">تاريخ الدين: {d.date}</span>
+                        </div>
+
+                        {settlingDebtId === d.id ? (
+                          <div className="bg-white p-3 rounded-xl border shadow-sm space-y-2 w-full md:w-auto">
+                            <span className="text-xs font-bold text-emerald-700 block">اختر طريقة السداد وتاريخه:</span>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setRepayMethod('كاش')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`}>كاش 💵</button>
+                              <button type="button" onClick={() => setRepayMethod('بنك')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>بنك 💳</button>
+                            </div>
+                            <input type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} className="w-full px-2 py-1 border rounded-lg text-xs text-gray-900" />
+                            <input type="text" placeholder="ملاحظات السداد (اختياري)..." value={repayNotes} onChange={e => setRepayNotes(e.target.value)} className="w-full px-2 py-1 border rounded-lg text-xs text-gray-900" />
+                            <div className="flex gap-2 pt-1">
+                              <button onClick={() => handleSettleDebtAction(shopId, d)} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">تأكيد التسديد ✅</button>
+                              <button onClick={() => setSettlingDebtId(null)} className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold">إلغاء</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => setSettlingDebtId(d.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 shadow-xs">
+                            <CheckSquare size={14} /> تسديد الدين
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="font-bold text-gray-800">المركبات المسجلة اليوم في {currentUser.shopName}</h3>
+                  <button 
+                    onClick={handleRefreshData} 
+                    disabled={isRefreshing}
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
+                  >
+                    <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
+                    {isRefreshing ? 'جاري التحديث...' : 'تحديث القائمة'}
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {shopTx.length === 0 ? <p className="text-xs text-gray-400">لا توجد عمليات مسجلة بعد اليوم.</p> : shopTx.map(t => (
+                    <div key={t.id} className="p-4 bg-gray-50 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                      <div>
+                        <span className="font-bold block text-base text-gray-900">🏪 {currentUser.shopName}</span>
+                        <span className="text-sm font-semibold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span>
+                        <p className="text-xs text-gray-600">{t.service} | الطريقة: {t.method === 'دين' ? 'دين ⚠️' : t.method}</p>
+                        {t.notes && <p className="text-xs text-amber-700 italic">ملاحظة: {t.notes}</p>}
+                        <span className="text-xs font-bold text-emerald-600">المبلغ المدخل: {t.price} ليرة {t.method === 'دين' && '(على الذمة)'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {t.beforePhoto && <img src={t.beforePhoto} alt="قبل" className="w-12 h-12 object-cover rounded-lg border" />}
+                        {t.afterPhoto && <img src={t.afterPhoto} alt="بعد" className="w-12 h-12 object-cover rounded-lg border" />}
+                        
+                        <button onClick={() => handleStartEditTransaction(t)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Edit3 size={13} /> تعديل</button>
+                        <button onClick={() => setSelectedInvoice({ ...t, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo || { name: currentUser.shopName, address: 'فرع الخدمة', phone: '+90...' } })} className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1295,7 +1451,7 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك) =================
+  // ================= لوحة صاحب المحل (المالك - النسخة الأصلية المتكاملة 100%) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
