@@ -55,20 +55,19 @@ export default function App() {
     }
   ]);
 
-  // 🌟 باقات الأسعار مع دعم الإضافة، التعديل، والحذف
+  // باقات الأسعار مع الحدود القصوى للفروع (maxShops)
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 2 },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
     { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
   ]);
 
-  // حالات نموذج إضافة باقة جديدة
+  // حالات إضافة وتعديل باقات الأسعار للمبرمج
   const [newPlanName, setNewPlanName] = useState('');
   const [newPlanType, setNewPlanType] = useState('');
   const [newPlanPrice, setNewPlanPrice] = useState('');
   const [newPlanMaxShops, setNewPlanMaxShops] = useState('');
 
-  // حالات تعديل باقة موجودة
   const [editingPlanId, setEditingPlanId] = useState(null);
   const [editPlanName, setEditPlanName] = useState('');
   const [editPlanPrice, setEditPlanPrice] = useState('');
@@ -437,7 +436,6 @@ export default function App() {
     } else if (planType === 'lifetime') {
       expiryDate = 'مدى الحياة ♾️';
     } else {
-      // للأعضاء الجدد أو الباقات المخصصة المضافة حديثاً
       now.setDate(now.getDate() + 30);
       expiryDate = now.toISOString().slice(0, 10);
     }
@@ -615,7 +613,7 @@ export default function App() {
     printWindow.document.close();
   };
 
-  // 🌟 إدارة الفروع مع التحقق الصارم من عدد الفروع المسموح به بناءً على باقة الحساب الأساسي
+  // إدارة الفروع: إنشاء محل جديد مع التحقق الصارم من الحد الأقصى المسموح به للباقة الأساسية لصاحب المحل
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
@@ -648,6 +646,7 @@ export default function App() {
 
       const existingShop = shops.find(s => s.id === Number(shopId)) || {};
 
+      // الاشتراك ومدة الصلاحية تنعكس وتورث دائماً من الحساب الأساسي لصاحب المحل
       const baseSubscriptionType = firstShop.subscriptionType || existingShop.subscriptionType || 'trial';
       const baseSubscriptionExpiry = firstShop.subscriptionExpiry || existingShop.subscriptionExpiry || trialExpiry.toISOString().slice(0, 10);
 
@@ -791,7 +790,7 @@ export default function App() {
     } catch (e) { showToast('حدث خطأ أثناء حفظ المصروف', 'error'); }
   };
 
-  // 🌟 دوال إضافة، تعديل، وحذف باقات الأسعار من لوحة المبرمج
+  // دوال إضافة، تعديل، وحذف باقات الأسعار من لوحة المبرمج
   const handleAddPricingPlan = (e) => {
     e.preventDefault();
     if (!newPlanName || !newPlanPrice || !newPlanMaxShops) {
@@ -841,6 +840,16 @@ export default function App() {
     } : p));
     setEditingPlanId(null);
     showToast('تم تحديث بيانات الباقة بنجاح! ✅', 'success');
+  };
+
+  // 🌟 دالة حساب الوقت المتبقي للباقة بالأيام والساعات (تظهر لصاحب المحل فقط)
+  const calculateTimeRemaining = (expiryDateStr) => {
+    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 'مدى الحياة ♾️';
+    const diff = new Date(expiryDateStr) - new Date();
+    if (diff <= 0) return 'منتهي الصلاحية ⚠️';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    return `${days} يوم و ${hours} ساعة متبقية`;
   };
 
   const renderToastComponent = () => {
@@ -1114,11 +1123,10 @@ export default function App() {
             </div>
           )}
 
-          {/* 🌟 تبويب إدارة باقات الأسعار المطور بالكامل (إضافة، تعديل، حذف) */}
+          {/* 🌟 تبويب إدارة الباقات والأسعار مع دعم كامل لإضافة، تعديل، وحذف الباقات */}
           {programmerTab === 'pricingPlans' && (
             <div className="space-y-8 max-w-5xl mx-auto">
               
-              {/* نموذج إضافة باقة جديدة */}
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-purple-600 to-indigo-600"></div>
                 <div className="flex items-center gap-3 border-b pb-4">
@@ -1185,7 +1193,6 @@ export default function App() {
                 </form>
               </div>
 
-              {/* قائمة وتعديل الباقات الحالية */}
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6">
                 <div className="flex justify-between items-center border-b pb-4">
                   <h3 className="font-black text-lg text-gray-900">💰 الباقات الحالية المتاحة ({pricingPlans.length}):</h3>
@@ -1687,7 +1694,6 @@ export default function App() {
                 </form>
               </div>
 
-              {/* قائمة تسجيل المصروفات المضافة لشاشة العامل */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> تسجيل مصروف لـ {currentUser.shopName}</h3>
                 <form onSubmit={handleAddExpense} className="space-y-3">
@@ -1946,13 +1952,23 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex justify-between items-center">
+            <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
               <div>
                 <span className="text-blue-300 text-xs font-bold uppercase tracking-wider">الفرع النشط حالياً</span>
                 <h2 className="text-2xl font-black text-white mt-1">{isAllShops ? `تقرير الجمع الشامل لجميع فروعك (${ownedShops.length} فروع)` : currentShop?.name}</h2>
                 <p className="text-xs text-gray-300 mt-1">📍 {isAllShops ? `عدد الفروع النشطة: ${activeShopsCount} من أصل ${ownedShops.length} فرع` : currentShop?.address}</p>
                 {currentShop?.status === 'suspended' && (
                   <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">هذا الفرع موقوف / انتهى اشتراكه. يرجى التواصل مع الإدارة للتجديد!</span>
+                )}
+                
+                {/* 🌟 عداد الوقت المتبقي للباقة (أيام وساعات) يظهر لصاحب المحل فقط */}
+                {currentShop && (
+                  <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15">
+                    <span>⏳ عداد باقتك (الحساب الأساسي):</span>
+                    <span className="text-emerald-400 font-mono text-sm">
+                      {calculateTimeRemaining(currentShop.subscriptionExpiry)}
+                    </span>
+                  </div>
                 )}
               </div>
               <div className="text-left bg-white/10 p-4 rounded-2xl backdrop-blur-md">
