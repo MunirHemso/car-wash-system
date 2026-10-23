@@ -48,7 +48,6 @@ export default function App() {
     }
   ]);
 
-  // خطط الأسعار للباقات
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية', type: 'monthly', price: 500, currency: 'ليرة' },
     { id: 2, name: 'الباقة السنوية', type: 'yearly', price: 5000, currency: 'ليرة' },
@@ -58,7 +57,6 @@ export default function App() {
   const [targetClientEmailForDiscount, setTargetClientEmailForDiscount] = useState('');
   const [directDiscountValue, setDirectDiscountValue] = useState('');
 
-  // مزامنة المحلات والفروع سحابياً
   useEffect(() => {
     const unsubShops = onSnapshot(collection(db, "platformShops"), (snapshot) => {
       if (!snapshot.empty) {
@@ -154,7 +152,6 @@ export default function App() {
   const [programmerTab, setProgrammerTab] = useState('clients'); 
   const [selectedClientEmail, setSelectedClientEmail] = useState(null);
 
-  // حقول إضافة عميل جديد
   const [newClientName, setNewClientName] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
@@ -164,7 +161,6 @@ export default function App() {
   const [newClientWorkerPass, setNewClientWorkerPass] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
 
-  // حقول تعديل العميل
   const [editingClientData, setEditingClientData] = useState(null);
 
   const [newShopName, setNewShopName] = useState('');
@@ -477,24 +473,6 @@ export default function App() {
     } catch (error) {}
   };
 
-  const handleSettleDebtAction = async (shopId, debtObj) => {
-    try {
-      await deleteDoc(doc(db, "shops", String(shopId), "debts", String(debtObj.id)));
-      await addDoc(collection(db, "shops", String(shopId), "debtRepayments"), {
-        debtorName: debtObj.debtorName,
-        amount: debtObj.amount,
-        method: repayMethod,
-        notes: repayNotes || 'تسديد دين سابق',
-        date: repayDate
-      });
-      setSettlingDebtId(null);
-      setRepayNotes('');
-      alert(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`);
-    } catch (error) {
-      alert('حدث خطأ أثناء تسديد الدين.');
-    }
-  };
-
   const handleImageUpload = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -532,192 +510,7 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const handlePrintInvoice = (inv) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return alert('يرجى السماح بفتح النوافذ المنبثقة.');
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="ar" dir="rtl">
-      <head>
-        <meta charset="UTF-8">
-        <title>فاتورة - ${inv.plate}</title>
-        <style>
-          body { font-family: Tahoma, sans-serif; padding: 20px; text-align: right; }
-          .box { max-width: 450px; margin: auto; border: 2px solid #0f172a; padding: 20px; border-radius: 15px; }
-          .center { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; }
-          .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
-          .photos { display: flex; justify-content: space-around; margin-top: 15px; border-top: 1px dashed #cbd5e1; padding-top: 10px; text-align: center; }
-          .photos img { width: 45%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; }
-          .total { background: #ecfdf5; color: #047857; padding: 10px; text-align: center; font-weight: bold; margin-top: 15px; border-radius: 8px; border: 1px solid #a7f3d0; }
-        </style>
-      </head>
-      <body>
-        <div class="box">
-          <div class="center">
-            <h2>🏪 ${inv.shopName}</h2>
-            <p>${inv.shopInfo?.address || 'إسكندرون'} | هاتف: ${inv.shopInfo?.phone || '+90...'}</p>
-          </div>
-          <div class="row"><span>المركبة:</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
-          <div class="row"><span>اللوحة:</span><strong>${inv.plate}</strong></div>
-          <div class="row"><span>الخدمة:</span><strong>${inv.service}</strong></div>
-          <div class="row"><span>وقت العمل:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
-          <div class="row"><span>الدفع:</span><strong>${inv.method}</strong></div>
-          ${inv.notes ? `<div class="row"><span>ملاحظات:</span><strong>${inv.notes}</strong></div>` : ''}
-
-          ${(inv.beforePhoto || inv.afterPhoto) ? `
-            <div class="photos">
-              ${inv.beforePhoto ? `<div><span style="font-size:10px;">قبل الغسيل</span><img src="${inv.beforePhoto}"/></div>` : ''}
-              ${inv.afterPhoto ? `<div><span style="font-size:10px;">بعد الغسيل</span><img src="${inv.afterPhoto}"/></div>` : ''}
-            </div>
-          ` : ''}
-
-          <div class="total">الإجمالي: ${inv.price} ليرة</div>
-        </div>
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  const handleLogout = async () => {
-    try { await signOut(auth); } catch (e) {}
-    localStorage.removeItem('carWash_currentUser');
-    setCurrentUser(null);
-    setSelectedInvoice(null);
-  };
-
-  const handleOwnerAddShop = async (e) => {
-    e.preventDefault();
-    if (!newShopName || !newWorkerEmail || !newWorkerPass) return alert('يرجى تعبئة اسم المحل وإيميل وكلمة سر العامل');
-
-    try {
-      const shopId = Date.now();
-      const trialExpiry = new Date();
-      trialExpiry.setDate(trialExpiry.getDate() + 7);
-
-      const shopObj = {
-        id: shopId,
-        name: newShopName,
-        owner: currentUser.ownerName,
-        ownerEmail: currentUser.email,
-        taxNumber: currentUser.taxNumber || ownerTaxNumber || 'غير مسجل',
-        workerEmail: newWorkerEmail,
-        workerPass: newWorkerPass,
-        phone: newShopPhone || '+90 ...',
-        address: newShopAddress || 'العنوان لم يحدد',
-        code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
-        status: 'active',
-        subscriptionType: 'trial',
-        subscriptionExpiry: trialExpiry.toISOString().slice(0, 10),
-        discountPercent: 0,
-        suspendedAt: null
-      };
-
-      await setDoc(doc(db, "platformShops", String(shopId)), shopObj);
-
-      const updatedOwnedShops = [...(currentUser.ownedShops || []), shopObj];
-      setCurrentUser(prev => ({
-        ...prev,
-        ownedShops: updatedOwnedShops
-      }));
-
-      setNewShopName('');
-      setNewWorkerEmail('');
-      setNewWorkerPass('');
-      setNewShopPhone('');
-      setNewShopAddress('');
-      setSelectedShopId(shopId);
-      
-      alert('تم إضافة الفرع الجديد بنجاح ومنحه 7 أيام تجريبية مجانية! 🏪✨');
-      setActiveTab('dashboard');
-    } catch (error) {
-      alert('حدث خطأ أثناء الحفظ: ' + error.message);
-    }
-  };
-
-  const handleDeleteTransactionByOwner = async (shopId, txId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
-    try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); alert('تم الحذف بنجاح'); } catch (e) {}
-  };
-
-  const handleStartEditTransaction = (t) => {
-    setEditingTxId(t.id);
-    setVehicleCategory(t.vehicleCategory || 'سيارة');
-    setCarModel(t.carModel || '');
-    setPlateNumber(t.plate);
-    setServiceType(t.service);
-    setPrice(t.price);
-    setPayMethod(t.method);
-    setTxNotes(t.notes || '');
-    setStartTime(t.startTime);
-    setEndTime(t.endTime);
-    if (t.beforePhoto) setBeforePhoto(t.beforePhoto);
-    if (t.afterPhoto) setAfterPhoto(t.afterPhoto);
-  };
-
-  const handleAddTransaction = async (e) => {
-    e.preventDefault();
-    if (!plateNumber || !price || !currentUser) return alert('أدخل اللوحة والسعر!');
-    const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
-    if (!shopId || shopId === 'all') return alert('اختر محلاً محدداً');
-
-    try {
-      if (editingTxId) {
-        await updateDoc(doc(db, "shops", String(shopId), "transactions", String(editingTxId)), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
-        });
-        setEditingTxId(null);
-        alert('تم التحديث بنجاح ✏️');
-      } else {
-        await addDoc(collection(db, "shops", String(shopId), "transactions"), {
-          vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: new Date().toISOString().slice(0, 10), beforePhoto, afterPhoto
-        });
-        if (payMethod === 'دين') {
-          await addDoc(collection(db, "shops", String(shopId), "debts"), {
-            debtorName, phone: debtorPhone, service: serviceType, amount: Number(price), date: new Date().toISOString().slice(0, 10), addedBy: 'عامل الفرع'
-          });
-          setDebtorName(''); setDebtorPhone('');
-        }
-        alert('تم تسجيل الطلب بنجاح! 🚗✨');
-      }
-      setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); setBeforePhoto(null); setAfterPhoto(null);
-    } catch (e) { alert('خطأ: ' + e.message); }
-  };
-
-  const handleAddExpense = async (e) => {
-    e.preventDefault();
-    if (!expTitle || !expAmount || !selectedShopId) return alert('أدخل بيانات المصروف');
-    try {
-      await addDoc(collection(db, "shops", String(selectedShopId), "expenses"), {
-        category: expCategory, title: expTitle, amount: Number(expAmount), notes: expNotes, time: new Date().toLocaleTimeString()
-      });
-      setExpTitle(''); setExpAmount(''); setExpNotes('');
-      alert('تم تسجيل المصروف بنجاح 📉');
-    } catch (e) { alert('خطأ'); }
-  };
-
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
-        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
-          <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
-          <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
-          <form onSubmit={handleFirebaseLogin} className="space-y-4">
-            <div><label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label><input type="email" value={inputEmail} onChange={e => setInputEmail(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" required /></div>
-            <div>
-              <div className="flex justify-between items-center mb-1"><label className="block text-xs font-bold text-gray-600">كلمة المرور</label><button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600">نسيت كلمة المرور؟</button></div>
-              <input type="password" value={inputPassword} onChange={e => setInputPassword(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" required />
-            </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">تسجيل الدخول الآمن 🚀</button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // ================= 🌟 واجهة المبرمج الاحترافية (مع كافة التعديلات التجارية الجديدة) =================
+  // ================= 🌟 لوحة المبرمج الاحترافية (SaaS Admin) =================
   if (currentUser.role === 'programmer') {
     const clientsMap = {};
     shops.forEach(s => {
@@ -1214,7 +1007,7 @@ export default function App() {
     );
   }
 
-  // ================= شاشة العامل (النسخة القديمة الأصلية 100%) =================
+  // ================= 🌟 شاشة العامل (النسخة الأصلية المتكاملة 100%) =================
   if (currentUser.role === 'worker') {
     const shopId = currentUser.shopId;
     const shopTx = transactions[shopId] || [];
@@ -1224,7 +1017,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         <header className="bg-slate-900 text-white p-4 flex justify-between items-center">
-          <div><h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1><span className="text-xs text-cyan-300 font-medium">شاشة العامل</span></div>
+          <div>
+            <h1 className="font-bold text-white text-lg">{currentUser.shopName}</h1>
+            <span className="text-xs text-cyan-300 font-medium">شاشة العامل</span>
+          </div>
           <button onClick={handleLogout} className="bg-red-600 px-3 py-1.5 rounded-xl text-xs font-bold text-white cursor-pointer">خروج</button>
         </header>
 
@@ -1451,7 +1247,7 @@ export default function App() {
     );
   }
 
-  // ================= لوحة صاحب المحل (المالك - النسخة الأصلية المتكاملة 100%) =================
+  // ================= 🌟 لوحة صاحب المحل (المالك - النسخة الأصلية المتكاملة 100%) =================
   const ownedShops = currentUser.ownedShops || [];
   const currentShop = ownedShops.find(s => s.id === Number(selectedShopId)) || ownedShops[0];
   const isAllShops = selectedShopId === 'all';
