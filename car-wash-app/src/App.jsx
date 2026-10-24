@@ -78,6 +78,13 @@ export default function App() {
   const [plateSearchQuery, setPlateSearchQuery] = useState('');
 
   const [toast, setToast] = useState(null);
+  
+  // 🌟 نظام نافذة التأكيد الفاخرة (بديل window.confirm التقليدي)
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    message: '',
+    onConfirm: null
+  });
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -86,7 +93,6 @@ export default function App() {
     }, 10000);
   };
 
-  // التحقق من رقم الهاتف التركي بحيث لا يتجاوز 11 رقماً
   const validateTurkishPhone = (phone) => {
     if (!phone) return true;
     const cleanPhone = phone.replace(/\D/g, '');
@@ -416,26 +422,31 @@ export default function App() {
     }
   };
 
-  const handleSuspendClientForMonths = async (clientEmail) => {
-    if (!window.confirm('هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟')) return;
+  const handleSuspendClientForMonths = (clientEmail) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟',
+      onConfirm: async () => {
+        try {
+          const threeMonthsLater = new Date();
+          threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
 
-    try {
-      const threeMonthsLater = new Date();
-      threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3);
-
-      const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
-      for (const shop of clientShops) {
-        await updateDoc(doc(db, "platformShops", String(shop.id)), {
-          status: 'suspended',
-          suspendedAt: new Date().toISOString(),
-          gracePeriodExpiry: threeMonthsLater.toISOString().slice(0, 10)
-        });
+          const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
+          for (const shop of clientShops) {
+            await updateDoc(doc(db, "platformShops", String(shop.id)), {
+              status: 'suspended',
+              suspendedAt: new Date().toISOString(),
+              gracePeriodExpiry: threeMonthsLater.toISOString().slice(0, 10)
+            });
+          }
+          setSelectedClientEmail(null);
+          showToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
+        } catch (e) {
+          showToast('حدث خطأ أثناء تعليق الحساب.', 'error');
+        }
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
-      setSelectedClientEmail(null);
-      showToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
-    } catch (e) {
-      showToast('حدث خطأ أثناء تعليق الحساب.', 'error');
-    }
+    });
   };
 
   const handleUpdateClientSubscription = async (clientEmail, planType) => {
@@ -472,17 +483,23 @@ export default function App() {
     }
   };
 
-  const handleSuspendShop = async (shopId) => {
-    if (!window.confirm('هل أنت متأكد من تعليق هذا الفرع وإيقاف اشتراكه؟')) return;
-    try {
-      await updateDoc(doc(db, "platformShops", String(shopId)), {
-        status: 'suspended',
-        suspendedAt: new Date().toISOString()
-      });
-      showToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
-    } catch (e) {
-      showToast('حدث خطأ أثناء تعليق الفرع.', 'error');
-    }
+  const handleSuspendShop = (shopId) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من تعليق هذا الفرع وإيقاف اشتراكه؟',
+      onConfirm: async () => {
+        try {
+          await updateDoc(doc(db, "platformShops", String(shopId)), {
+            status: 'suspended',
+            suspendedAt: new Date().toISOString()
+          });
+          showToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
+        } catch (e) {
+          showToast('حدث خطأ أثناء تعليق الفرع.', 'error');
+        }
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleActivateShop = async (shopId) => {
@@ -516,12 +533,18 @@ export default function App() {
     }
   };
 
-  const handleDeleteAnnouncement = async (shopId, annId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا التنبيه؟')) return;
-    try {
-      await deleteDoc(doc(db, "shops", String(shopId), "announcements", String(annId)));
-      showToast('تم حذف التنبيه بنجاح.', 'success');
-    } catch (error) {}
+  const handleDeleteAnnouncement = (shopId, annId) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من حذف هذا التنبيه؟',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "shops", String(shopId), "announcements", String(annId)));
+          showToast('تم حذف التنبيه بنجاح.', 'success');
+        } catch (error) {}
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleSettleDebtAction = async (shopId, debtObj) => {
@@ -720,28 +743,43 @@ export default function App() {
     setNewShopAddress(shop.address || '');
   };
 
-  const handleDeleteShopByOwner = async (shopId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا الفرع نهائياً من مجموعتك؟')) return;
-    try {
-      await deleteDoc(doc(db, "platformShops", String(shopId)));
-      const ownerEmail = currentUser.email.toLowerCase();
-      const updatedOwnedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === ownerEmail && s.id !== Number(shopId));
-      setCurrentUser(prev => ({
-        ...prev,
-        ownedShops: updatedOwnedShops
-      }));
-      if (selectedShopId === Number(shopId)) {
-        setSelectedShopId(updatedOwnedShops[0]?.id || 'all');
+  const handleDeleteShopByOwner = (shopId) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من حذف هذا الفرع نهائياً من مجموعتك؟',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "platformShops", String(shopId)));
+          const ownerEmail = currentUser.email.toLowerCase();
+          const updatedOwnedShops = shops.filter(s => s.ownerEmail && s.ownerEmail.toLowerCase() === ownerEmail && s.id !== Number(shopId));
+          setCurrentUser(prev => ({
+            ...prev,
+            ownedShops: updatedOwnedShops
+          }));
+          if (selectedShopId === Number(shopId)) {
+            setSelectedShopId(updatedOwnedShops[0]?.id || 'all');
+          }
+          showToast('تم حذف الفرع بنجاح 🗑️', 'success');
+        } catch (e) {
+          showToast('حدث خطأ أثناء حذف الفرع', 'error');
+        }
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
-      showToast('تم حذف الفرع بنجاح 🗑️', 'success');
-    } catch (e) {
-      showToast('حدث خطأ أثناء حذف الفرع', 'error');
-    }
+    });
   };
 
-  const handleDeleteTransactionByOwner = async (shopId, txId) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه العملية؟')) return;
-    try { await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId))); showToast('تم الحذف بنجاح', 'success'); } catch (e) {}
+  const handleDeleteTransactionByOwner = (shopId, txId) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من حذف هذه العملية؟',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId)));
+          showToast('تم الحذف بنجاح', 'success');
+        } catch (e) {}
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleStartEditTransaction = (t) => {
@@ -842,9 +880,15 @@ export default function App() {
       showToast('يجب أن تبقى باقة واحدة على الأقل في النظام!', 'error');
       return;
     }
-    if (!window.confirm('هل أنت متأكد من حذف هذه الباقة؟')) return;
-    setPricingPlans(pricingPlans.filter(p => p.id !== planId));
-    showToast('تم حذف الباقة بنجاح.', 'success');
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من حذف هذه الباقة؟',
+      onConfirm: () => {
+        setPricingPlans(pricingPlans.filter(p => p.id !== planId));
+        showToast('تم حذف الباقة بنجاح.', 'success');
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
   };
 
   const handleStartEditPlan = (plan) => {
@@ -892,10 +936,50 @@ export default function App() {
     );
   };
 
+  // 🌟 نافذة التأكيد الفاخرة (تستبدل نافذة المتصفح التقليدية window.confirm تماماً)
+  const renderConfirmModal = () => {
+    if (!confirmModal.isOpen) return null;
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6 border border-slate-100 text-right transform transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">تأكيد الإجراء المطلوب</h3>
+              <p className="text-xs text-slate-500 mt-0.5">يرجى التأكيد للمتابعة أو إلغاء الطلب</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+            <p className="text-sm font-semibold text-slate-700 leading-relaxed">{confirmModal.message}</p>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button 
+              onClick={confirmModal.onConfirm}
+              className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white py-3 rounded-xl font-bold text-sm cursor-pointer shadow-lg shadow-red-500/25 transition transform active:scale-95"
+            >
+              تأكيد وحذف / تنفيذ ✅
+            </button>
+            <button 
+              onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
+              className="px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm cursor-pointer transition"
+            >
+              إلغاء ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
         {renderToastComponent()}
+        {renderConfirmModal()}
         <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
           <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
           <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
@@ -971,6 +1055,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
+        {renderConfirmModal()}
 
         <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -1579,6 +1664,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
         {renderToastComponent()}
+        {renderConfirmModal()}
 
         <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -1950,6 +2036,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
       {renderToastComponent()}
+      {renderConfirmModal()}
 
       {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
         <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
