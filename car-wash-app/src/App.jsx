@@ -55,7 +55,6 @@ export default function App() {
     }
   ]);
 
-  // باقات الأسعار مع الحدود القصوى للفروع (maxShops)
   const [pricingPlans, setPricingPlans] = useState([
     { id: 1, name: 'الباقة الشهرية (محل واحد)', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 1 },
     { id: 2, name: 'الباقة السنوية (حتى 5 فروع)', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
@@ -87,12 +86,11 @@ export default function App() {
     }, 10000);
   };
 
-  // وظيفة التحقق من صحة رقم الهاتف التركي (مثل 05XXXXXXXXX أو +905XXXXXXXXX)
+  // التحقق من رقم الهاتف التركي بحيث لا يتجاوز 11 رقماً
   const validateTurkishPhone = (phone) => {
-    if (!phone) return true; // إذا كان اختيارياً
-    const cleanPhone = phone.replace(/\s+/g, '');
-    const turkishPhoneRegex = /^(\+90|0)?5\d{9}$/;
-    return turkishPhoneRegex.test(cleanPhone);
+    if (!phone) return true;
+    const cleanPhone = phone.replace(/\D/g, '');
+    return cleanPhone.length <= 11 && cleanPhone.length >= 10;
   };
 
   useEffect(() => {
@@ -326,7 +324,7 @@ export default function App() {
     }
 
     if (newClientPhone && !validateTurkishPhone(newClientPhone)) {
-      showToast('رقم الهاتف المدخل غير صحيح! يرجى إدخال رقم هاتف تركي صالح (مثال: 05XXXXXXXXX)', 'error');
+      showToast('رقم الهاتف المدخل غير صحيح! يرجى ألا يتجاوز 11 رقماً.', 'error');
       return;
     }
 
@@ -398,7 +396,7 @@ export default function App() {
     if (!editingClientData) return;
 
     if (editingClientData.phone && !validateTurkishPhone(editingClientData.phone)) {
-      showToast('رقم الهاتف المدخل غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      showToast('رقم الهاتف غير صالح! الحد الأقصى 11 رقماً.', 'error');
       return;
     }
 
@@ -605,7 +603,7 @@ export default function App() {
         <div class="box">
           <div class="center">
             <h2>🏪 ${inv.shopName}</h2>
-            <p>${inv.shopInfo?.address || 'إسكندرون'} | هاتف: ${inv.shopInfo?.phone || '+90...'}</p>
+            <p>${inv.shopInfo?.address || 'إسكندرون'} | هاتف: <span dir="ltr">${inv.shopInfo?.phone || '+90...'}</span></p>
           </div>
           <div class="row"><span>المركبة:</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
           <div class="row"><span>اللوحة:</span><strong>${inv.plate}</strong></div>
@@ -635,7 +633,7 @@ export default function App() {
     if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
 
     if (newShopPhone && !validateTurkishPhone(newShopPhone)) {
-      showToast('رقم هاتف الفرع غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      showToast('رقم هاتف الفرع غير صحيح! يجب ألا يتجاوز 11 رقماً.', 'error');
       return;
     }
 
@@ -768,7 +766,7 @@ export default function App() {
     if (!shopId || shopId === 'all') return showToast('اختر محلاً محدداً', 'error');
 
     if (debtorPhone && !validateTurkishPhone(debtorPhone)) {
-      showToast('رقم هاتف الزبون المدين غير صحيح! يرجى إدخال رقم تركي صالح.', 'error');
+      showToast('رقم هاتف الزبون المدين غير صحيح! الحد الأقصى 11 رقماً.', 'error');
       return;
     }
 
@@ -1046,7 +1044,7 @@ export default function App() {
                             🏢 {client.shopsList.length} فروع
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
+                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
                         {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
@@ -1071,7 +1069,7 @@ export default function App() {
                             🏢 {client.shopsList.length} فرع
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
+                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
                         {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
@@ -1102,7 +1100,7 @@ export default function App() {
                             معلق / مؤرشف
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: {client.phone}</p>
+                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
                         <p className="text-xs text-red-600 font-semibold mt-1">عدد الفروع المعلقة: {client.shopsList.length}</p>
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
@@ -1139,8 +1137,8 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف (التركي)</label>
-                    <input type="text" dir="ltr" placeholder="05XXXXXXXXX" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-right" />
+                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف (التركي - أقصى 11 رقماً)</label>
+                    <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-right" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي</label>
@@ -1405,7 +1403,7 @@ export default function App() {
                   <h4 className="font-bold text-sm text-blue-900">تعديل بيانات العميل أو تحديث بيانات الدخول والضريبة:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder="اسم العميل" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
-                    <input type="text" dir="ltr" value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-right" />
+                    <input type="text" dir="ltr" maxLength={11} value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value.replace(/\D/g, '').slice(0, 11)})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-right" />
                     <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -1725,7 +1723,7 @@ export default function App() {
                     <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
                       <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
                       <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الزبون')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                      <input type="text" dir="ltr" placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-right" required />
+                      <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-right" required />
                     </div>
                   )}
 
@@ -1966,14 +1964,14 @@ export default function App() {
         </div>
       )}
 
-      {/* الهيدر العلوي الجديد والمنسق لصاحب المحل */}
-      <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex flex-wrap justify-between items-center gap-4">
+      {/* الهيدر العلوي المحدث بأعلى معايير الفخامة والعصرية */}
+      <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-2xl flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
             <Building size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <span className="font-extrabold text-white text-base tracking-wide">لوحة تحكم المالك: {currentUser.ownerName}</span>
               <span className="text-[10px] bg-slate-800 text-blue-400 px-2.5 py-0.5 rounded-full font-mono border border-slate-700">الرقم الضريبي: {currentUser.taxNumber}</span>
             </div>
@@ -2002,31 +2000,31 @@ export default function App() {
         </div>
       </header>
 
-      {/* شريط التنقل الجديد بصيغة أزرار Pill Tabs منسقة */}
+      {/* شريط التنقل (Pill Tabs) الاحترافي والمحدث بجميع الصفحات */}
       <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
         <button 
           onClick={() => setActiveTab('dashboard')} 
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
           📊 نظرة عامة والجرد
         </button>
         <button 
           onClick={() => setActiveTab('addShop')} 
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'addShop' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'addShop' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
           ➕ إدارة وإضافة الفروع
         </button>
         {!isAllShops && (
           <button 
             onClick={() => setActiveTab('accounting')} 
-            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'accounting' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'accounting' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
           >
             📑 كشف الحسابات والديون والأرباح
           </button>
         )}
         <button 
           onClick={() => setActiveTab('profile')} 
-          className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${activeTab === 'profile' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'text-slate-600 hover:bg-slate-100'}`}
+          className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'profile' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
           ⚙️ الملف الشخصي والضريبي
         </button>
@@ -2044,7 +2042,7 @@ export default function App() {
                   <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">هذا الفرع موقوف / انتهى اشتراكه. يرجى التواصل مع الإدارة للتجديد!</span>
                 )}
                 
-                {/* عداد الوقت المتبقي للباقة (أيام وساعات) للعميل الأساسي */}
+                {/* عداد الوقت المتبقي للباقة (أيام وساعات) لصاحب المحل */}
                 {currentShop && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15 shadow-inner">
                     <span>⏳ عداد باقتك (الحساب الأساسي):</span>
@@ -2193,7 +2191,7 @@ export default function App() {
                       <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
                     </select>
                     <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                    <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى تحديد مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
                     <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
                     <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
                   </form>
@@ -2329,7 +2327,7 @@ export default function App() {
                       placeholder="worker@gmail.com" 
                       value={newWorkerEmail} 
                       onChange={e => setNewWorkerEmail(e.target.value)} 
-                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل الإلكتروني')}
+                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل')}
                       onInput={e => e.target.setCustomValidity('')}
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                       required 
@@ -2352,13 +2350,14 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">رقم هاتف الفرع</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">رقم هاتف الفرع (أقصى 11 رقماً)</label>
                     <input 
                       type="text" 
                       dir="ltr"
+                      maxLength={11}
                       placeholder="05XXXXXXXXX" 
                       value={newShopPhone} 
-                      onChange={e => setNewShopPhone(e.target.value)} 
+                      onChange={e => setNewShopPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} 
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold text-right" 
                     />
                   </div>
