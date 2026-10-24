@@ -482,6 +482,30 @@ export default function App() {
     }
   };
 
+  // 🌟 دالة حذف / إلغاء اشتراك العميل من لوحة المبرمج
+  const handleRemoveClientSubscription = (clientEmail) => {
+    setConfirmModal({
+      isOpen: true,
+      message: 'هل أنت متأكد من إلغاء وحذف اشتراك هذا العميل؟ سيتم إيقاف فروعه مؤقتاً.',
+      onConfirm: async () => {
+        try {
+          const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
+          for (const shop of clientShops) {
+            await updateDoc(doc(db, "platformShops", String(shop.id)), {
+              subscriptionType: 'expired',
+              subscriptionExpiry: 'منتهي ❌',
+              status: 'suspended'
+            });
+          }
+          showToast('تم إلغاء وحذف اشتراك العميل بنجاح.', 'success');
+        } catch (e) {
+          showToast('حدث خطأ أثناء إلغاء الاشتراك.', 'error');
+        }
+        setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+      }
+    });
+  };
+
   const handleSuspendShop = (shopId) => {
     setConfirmModal({
       isOpen: true,
@@ -973,77 +997,41 @@ export default function App() {
     );
   };
 
-  // ================= 🌟 شاشة تسجيل الدخول الزجاجية الفخمة والحديثة =================
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
         {renderToastComponent()}
         {renderConfirmModal()}
-        
-        {/* خلفيات مضيئة متطورة */}
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="w-full max-w-md bg-slate-900/85 backdrop-blur-2xl border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10 space-y-8">
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25 text-white ring-4 ring-purple-500/10">
-              <Car size={32} />
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-2xl font-black text-white tracking-wide">نظام إدارة المغاسل السحابي</h1>
-              <p className="text-xs text-slate-400 font-medium">سجل دخولك عبر النظام السحابي الآمن والفخم</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleFirebaseLogin} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-300">البريد الإلكتروني</label>
+        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
+          <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
+          <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
+          <form onSubmit={handleFirebaseLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label>
               <input 
                 type="email" 
                 value={inputEmail} 
                 onChange={e => setInputEmail(e.target.value)} 
                 onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني بشكل صحيح')}
                 onInput={e => e.target.setCustomValidity('')}
-                placeholder="name@gmail.com"
-                className="w-full px-4 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-medium" 
+                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
                 required 
               />
             </div>
-
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-xs font-bold text-slate-300">كلمة المرور</label>
-                <button 
-                  type="button" 
-                  onClick={handleForgotPassword} 
-                  className="text-xs text-purple-400 hover:text-purple-300 font-semibold transition cursor-pointer"
-                >
-                  نسيت كلمة المرور؟
-                </button>
-              </div>
+            <div>
+              <div className="flex justify-between items-center mb-1"><label className="block text-xs font-bold text-gray-600">كلمة المرور</label><button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600">نسيت كلمة المرور؟</button></div>
               <input 
                 type="password" 
                 value={inputPassword} 
                 onChange={e => setInputPassword(e.target.value)} 
                 onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة المرور المطلوبة')}
                 onInput={e => e.target.setCustomValidity('')}
-                placeholder="••••••••"
-                className="w-full px-4 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-medium" 
+                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
                 required 
               />
             </div>
-
-            <button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-4 rounded-2xl font-black text-sm cursor-pointer shadow-xl shadow-purple-600/25 transition transform active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              تسجيل الدخول الآمن 🚀
-            </button>
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">تسجيل الدخول الآمن 🚀</button>
           </form>
-
-          <div className="pt-4 border-t border-slate-800 text-center flex items-center justify-center gap-2 text-slate-500 text-xs font-semibold">
-            <span>حماية مشفرة بالكامل عبر بروتوكول السحابة الآمن</span>
-          </div>
         </div>
       </div>
     );
@@ -1543,15 +1531,29 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="p-5 bg-slate-900 text-white rounded-2xl flex flex-wrap justify-between items-center gap-4">
-                <div>
-                  <h4 className="font-bold text-sm">منح اشتراك الحساب الأساسي (يُطبق على العميل وصلاحية فروعه):</h4>
-                  <p className="text-xs text-gray-300">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
+              {/* 🌟 منطقة منح وحذف الاشتراكات المرتبطة تلقائياً بصفحة وباقات الاشتراكات */}
+              <div className="p-6 bg-slate-900 text-white rounded-3xl space-y-4 shadow-xl">
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div>
+                    <h4 className="font-extrabold text-base">إدارة باقات واشتراكات العميل الأساسي (تُطبق على العميل وصلاحية فروعه):</h4>
+                    <p className="text-xs text-slate-300 mt-0.5">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveClientSubscription(selectedClient.ownerEmail)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition shadow-md flex items-center gap-1.5"
+                  >
+                    <Trash2 size={15} /> إلغاء / حذف الاشتراك ❌
+                  </button>
                 </div>
-                <div className="flex gap-2 flex-wrap">
+
+                <div className="flex gap-2 flex-wrap pt-2 border-t border-slate-800">
                   {pricingPlans.map(plan => (
-                    <button key={plan.id} onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, plan.type)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                      منح ({plan.name}) 📅
+                    <button 
+                      key={plan.id} 
+                      onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, plan.type)} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>📅</span> منح ({plan.name} - الحد: {plan.maxShops} فروع)
                     </button>
                   ))}
                 </div>
