@@ -1,15 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
   Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
   RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet,
-  LogOut, CheckCircle, UsersRound
+  LogOut, CheckCircle, UsersRound, Globe, ChevronDown
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { translations } from './translations';
 
 export default function App() {
+  // 🌟 نظام اللغات المتكامل مع الحفظ في الـ LocalStorage
+  const [lang, setLang] = useState(() => {
+    try {
+      return localStorage.getItem('carWash_lang') || 'ar';
+    } catch (e) {
+      return 'ar';
+    }
+  });
+
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const langDropdownRef = useRef(null);
+
+  const t = translations[lang] || translations.ar;
+
+  const handleLanguageChange = (newLang) => {
+    setLang(newLang);
+    try {
+      localStorage.setItem('carWash_lang', newLang);
+    } catch (e) {}
+    setIsLangDropdownOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(event.target)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('carWash_currentUser');
@@ -121,22 +154,22 @@ export default function App() {
   }, []);
 
   const comprehensiveCarLibrary = [
-    "فيات إيجيا (Fiat Egea)", "فيات لينيا (Fiat Linea)", "فيات پونتو (Fiat Punto)", "فيات دوبلو (Fiat Doblo)", "فيات فيورينو (Fiat Fiorino)", "فيات تيبو (Fiat Tipo)",
-    "رينو ميجان (Renault Megane)", "رينو كليو (Renault Clio)", "رينو فلوينس (Renault Fluence)", "رينو سيمبول (Renault Symbol)", "رينو تاليسمان (Renault Talisman)", "رينو كابتشر (Renault Captur)",
-    "فورد فوكس (Ford Focus)", "فورد فيستا (Ford Fiesta)", "فورد مونديو (Ford Mondeo)", "فورد كوجا (Ford Kuga)", "فورد ترانزيت (Ford Transit)", "فورد رينجر (Ford Ranger)",
-    "تويوتا كورولا (Toyota Corolla)", "تويوتا يارس (Toyota Yaris)", "تويوتا كامري (Toyota Camry)", "تويوتا راف 4 (Toyota RAV4)", "تويوتا هيلوكس (Toyota Hilux)",
-    "فولكس فاجن باسات (VW Passat)", "فولكس فاجن جولف (VW Golf)", "فولكس فاجن بولو (VW Polo)", "فولكس فاجن تيغوان (VW Tiguan)", "فولكس فاجن جِتا (VW Jetta)",
-    "هيونداي أكسنت (Hyundai Accent)", "هيونداي إلنترا (Hyundai Elantra)", "هيونداي توسان (Hyundai Tucson)", "هيونداي آي 20 (Hyundai i20)", "هيونداي سانتافي (Hyundai Santa Fe)",
-    "كيا سبورتاج (Kia Sportage)", "كيا سيراتو (Kia Cerato)", "كيا ريو (Kia Rio)", "كيا سورينتو (Kia Sorento)", "كيا بيكانتو (Kia Picanto)",
-    "هوندا سيبيك (Honda Civic)", "هوندا أكورد (Honda Accord)", "هوندا سي آر في (Honda CR-V)",
-    "بي إم دبليو الفئة الثالثة (BMW 3 Series)", "بي إم دبليو الفئة الخامسة (BMW 5 Series)", "بي إم دبليو إكس 3 (BMW X3)",
-    "مرسيدس الفئة C (Mercedes C-Class)", "مرسيدس الفئة E (Mercedes E-Class)", "مرسيدس جي إل سي (Mercedes GLC)",
-    "سكودا أوكتافيا (Skoda Octavia)", "سكودا سوبيرب (Skoda Superb)", "سكودا كودياك (Skoda Kodiaq)",
-    "داسيا دستر (Dacia Duster)", "داسيا سانديرو (Sandero)",
-    "بيجو 3008 (Peugeot 3008)", "بيجو 208 (Peugeot 208)",
-    "أوبل أسترا (Opel Astra)", "أوبل كورسا (Opel Corsa)",
-    "نيسان قشقاي (Nissan Qashqai)", "نيسان صني (Nissan Sunny)",
-    "توج تي 10 إكس (Togg T10X)"
+    "Fiat Egea", "Fiat Linea", "Fiat Punto", "Fiat Doblo", "Fiat Fiorino", "Fiat Tipo",
+    "Renault Megane", "Renault Clio", "Renault Fluence", "Renault Symbol", "Renault Talisman", "Renault Captur",
+    "Ford Focus", "Ford Fiesta", "Ford Mondeo", "Ford Kuga", "Ford Transit", "Ford Ranger",
+    "Toyota Corolla", "Toyota Yaris", "Toyota Camry", "Toyota RAV4", "Toyota Hilux",
+    "VW Passat", "VW Golf", "VW Polo", "VW Tiguan", "VW Jetta",
+    "Hyundai Accent", "Hyundai Elantra", "Hyundai Tucson", "Hyundai i20", "Hyundai Santa Fe",
+    "Kia Sportage", "Kia Cerato", "Kia Rio", "Kia Sorento", "Kia Picanto",
+    "Honda Civic", "Honda Accord", "Honda CR-V",
+    "BMW 3 Series", "BMW 5 Series", "BMW X3",
+    "Mercedes C-Class", "Mercedes E-Class", "Mercedes GLC",
+    "Skoda Octavia", "Skoda Superb", "Skoda Kodiaq",
+    "Dacia Duster", "Dacia Sandero",
+    "Peugeot 3008", "Peugeot 208",
+    "Opel Astra", "Opel Corsa",
+    "Nissan Qashqai", "Nissan Sunny",
+    "Togg T10X"
   ];
 
   const [transactions, setTransactions] = useState({});
@@ -248,13 +281,13 @@ export default function App() {
     setIsRefreshing(true);
     setTimeout(() => {
       setIsRefreshing(false);
-      showToast('تم تحديث القوائم وجلب أحدث البيانات بنجاح! 🔄✨', 'success');
+      showToast(t.refreshSuccess, 'success');
     }, 600);
   };
 
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
-    if (!inputEmail || !inputPassword) return showToast('الرجاء إدخال البريد الإلكتروني وكلمة المرور', 'error');
+    if (!inputEmail || !inputPassword) return showToast(t.loginError, 'error');
 
     try {
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
@@ -266,7 +299,7 @@ export default function App() {
       if (ownedShops.length > 0) {
         const activeOrValidShops = ownedShops.filter(s => s.status !== 'suspended');
         if (activeOrValidShops.length === 0) {
-          showToast('عذراً، حسابك موقوف أو انتهت صلاحية اشتراكه. يرجى مراجعة الإدارة!', 'error');
+          showToast(t.suspendedAccountMsg, 'error');
           return;
         }
 
@@ -286,7 +319,7 @@ export default function App() {
       const targetShop = shops.find(s => s.workerEmail && s.workerEmail.toLowerCase() === inputEmail.toLowerCase() && s.workerPass === inputPassword);
       if (targetShop) {
         if (targetShop.status === 'suspended') {
-          showToast('عذراً، هذا الفرع معلق أو انتهى اشتراكه من قبل الإدارة!', 'error');
+          showToast(t.suspendedShopMsg, 'error');
           return;
         }
         const workerData = {
@@ -300,31 +333,31 @@ export default function App() {
         return;
       }
 
-      showToast('البريد الإلكتروني أو كلمة المرور غير صحيحة!', 'error');
+      showToast(t.loginError, 'error');
     } catch (error) {
       console.error(error);
-      showToast('فشل تسجيل الدخول: تأكد من صحة البيانات المدخلة.', 'error');
+      showToast(t.loginFailed, 'error');
     }
   };
 
   const handleForgotPassword = async () => {
     if (!inputEmail) {
-      showToast('الرجاء كتابة بريدك الإلكتروني في حقل الإيميل أولاً!', 'error');
+      showToast(t.enterEmailFirst, 'error');
       return;
     }
     try {
       await sendPasswordResetEmail(auth, inputEmail);
-      showToast('تم إرسال رابط تغيير كلمة المرور إلى بريدك الإلكتروني بنجاح. 📧', 'success');
+      showToast(t.resetSent, 'success');
     } catch (error) {
       console.error(error);
-      showToast('حدث خطأ، تأكد من أن البريد الإلكتروني مسجل بشكل صحيح في النظام.', 'error');
+      showToast(t.resetError, 'error');
     }
   };
 
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
-      showToast('يرجى تعبئة الحقول الأساسية للعميل وفرعه الأول!', 'error');
+      showToast(t.loginError, 'error');
       return;
     }
 
@@ -459,7 +492,7 @@ export default function App() {
       now.setFullYear(now.getFullYear() + 1);
       expiryDate = now.toISOString().slice(0, 10);
     } else if (planType === 'lifetime') {
-      expiryDate = 'مدى الحياة ♾️';
+      expiryDate = t.lifetimeDuration;
     } else {
       now.setDate(now.getDate() + 30);
       expiryDate = now.toISOString().slice(0, 10);
@@ -482,7 +515,6 @@ export default function App() {
     }
   };
 
-  // 🌟 دالة حذف / إلغاء اشتراك العميل من لوحة المبرمج
   const handleRemoveClientSubscription = (clientEmail) => {
     setConfirmModal({
       isOpen: true,
@@ -631,12 +663,12 @@ export default function App() {
 
     printWindow.document.write(`
       <!DOCTYPE html>
-      <html lang="ar" dir="rtl">
+      <html lang="${lang}" dir="${t.dir}">
       <head>
         <meta charset="UTF-8">
-        <title>فاتورة - ${inv.plate}</title>
+        <title>${t.officialInvoiceBadge} - ${inv.plate}</title>
         <style>
-          body { font-family: Tahoma, sans-serif; padding: 20px; text-align: right; }
+          body { font-family: Tahoma, sans-serif; padding: 20px; text-align: ${t.dir === 'rtl' ? 'right' : 'left'}; }
           .box { max-width: 450px; margin: auto; border: 2px solid #0f172a; padding: 20px; border-radius: 15px; }
           .center { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; }
           .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
@@ -649,23 +681,23 @@ export default function App() {
         <div class="box">
           <div class="center">
             <h2>🏪 ${inv.shopName}</h2>
-            <p>${inv.shopInfo?.address || 'إسكندرون'} | هاتف: <span dir="ltr">${inv.shopInfo?.phone || '+90...'}</span></p>
+            <p>${inv.shopInfo?.address || 'İskenderun'} | ${t.phoneLabel} <span dir="ltr">${inv.shopInfo?.phone || '+90...'}</span></p>
           </div>
-          <div class="row"><span>المركبة:</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
-          <div class="row"><span>اللوحة:</span><strong>${inv.plate}</strong></div>
-          <div class="row"><span>الخدمة:</span><strong>${inv.service}</strong></div>
-          <div class="row"><span>وقت العمل:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
-          <div class="row"><span>الدفع:</span><strong>${inv.method}</strong></div>
-          ${inv.notes ? `<div class="row"><span>ملاحظات:</span><strong>${inv.notes}</strong></div>` : ''}
+          <div class="row"><span>${t.vehicleCatLabel}</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
+          <div class="row"><span>${t.plateNumber}</span><strong>${inv.plate}</strong></div>
+          <div class="row"><span>${t.serviceNameLabel}</span><strong>${inv.service}</strong></div>
+          <div class="row"><span>${t.startTimePlaceholder} / ${t.endTimePlaceholder}:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
+          <div class="row"><span>${t.paymentMethod}:</span><strong>${inv.method}</strong></div>
+          ${inv.notes ? `<div class="row"><span>${t.notesOptional}:</span><strong>${inv.notes}</strong></div>` : ''}
 
           ${(inv.beforePhoto || inv.afterPhoto) ? `
             <div class="photos">
-              ${inv.beforePhoto ? `<div><span style="font-size:10px;">قبل الغسيل</span><img src="${inv.beforePhoto}"/></div>` : ''}
-              ${inv.afterPhoto ? `<div><span style="font-size:10px;">بعد الغسيل</span><img src="${inv.afterPhoto}"/></div>` : ''}
+              ${inv.beforePhoto ? `<div><span style="font-size:10px;">${t.beforeBadge}</span><img src="${inv.beforePhoto}"/></div>` : ''}
+              ${inv.afterPhoto ? `<div><span style="font-size:10px;">${t.afterBadge}</span><img src="${inv.afterPhoto}"/></div>` : ''}
             </div>
           ` : ''}
 
-          <div class="total">الإجمالي: ${inv.price} ليرة</div>
+          <div class="total">${t.totalInvoiceAmount} ${inv.price} ${t.currency}</div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
       </body>
@@ -867,7 +899,7 @@ export default function App() {
         title: expTitle, 
         amount: Number(expAmount), 
         notes: expNotes, 
-        date: todayDateStr,
+        date: todayDateStr, 
         time: new Date().toLocaleTimeString()
       });
       setExpTitle(''); setExpAmount(''); setExpNotes('');
@@ -878,7 +910,7 @@ export default function App() {
   const handleAddPricingPlan = (e) => {
     e.preventDefault();
     if (!newPlanName || !newPlanPrice || !newPlanMaxShops) {
-      showToast('يرجى تعبئة جميع حقول الباقة الجديدة!', 'error');
+      showToast(t.loginError, 'error');
       return;
     }
     const planTypeKey = newPlanType ? newPlanType.toLowerCase().replace(/\s+/g, '_') : ('plan_' + Date.now());
@@ -887,7 +919,7 @@ export default function App() {
       name: newPlanName,
       type: planTypeKey,
       price: Number(newPlanPrice),
-      currency: 'ليرة',
+      currency: t.currency,
       maxShops: Number(newPlanMaxShops)
     };
     setPricingPlans([...pricingPlans, newPlanObj]);
@@ -933,12 +965,67 @@ export default function App() {
   };
 
   const calculateTimeRemaining = (expiryDateStr) => {
-    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 'مدى الحياة ♾️';
+    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة') || expiryDateStr.includes('Ömür') || expiryDateStr.includes('Lifetime')) return t.lifetimeDuration;
     const diff = new Date(expiryDateStr) - new Date();
-    if (diff <= 0) return 'منتهي الصلاحية ⚠️';
+    if (diff <= 0) return t.expiredDuration;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    return `${days} يوم و ${hours} ساعة متبقية`;
+    return t.timeRemainingDaysHours.replace('{days}', days).replace('{hours}', hours);
+  };
+
+  // 🌟 المكون الاحترافي لزر تبديل اللغة (Language Switcher)
+  const renderLanguageSwitcher = (theme = 'dark') => {
+    const isDark = theme === 'dark';
+    return (
+      <div className="relative inline-block text-left" ref={langDropdownRef}>
+        <button
+          type="button"
+          onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-2 cursor-pointer transition shadow-sm border backdrop-blur-md ${
+            isDark 
+              ? 'bg-slate-800/80 hover:bg-slate-700 text-white border-slate-700' 
+              : 'bg-white/90 hover:bg-slate-100 text-slate-800 border-slate-200'
+          }`}
+        >
+          <Globe size={15} className="text-blue-400" />
+          <span>{t.flag}</span>
+          <span className="hidden sm:inline">{t.langName}</span>
+          <ChevronDown size={13} className={`transition-transform duration-200 ${isLangDropdownOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isLangDropdownOpen && (
+          <div className="absolute end-0 mt-2 w-36 rounded-2xl bg-white shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => handleLanguageChange('ar')}
+              className={`w-full text-start px-3.5 py-2 text-xs font-bold flex items-center gap-2.5 transition cursor-pointer ${
+                lang === 'ar' ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>🇸🇦</span>
+              <span>العربية</span>
+            </button>
+            <button
+              onClick={() => handleLanguageChange('tr')}
+              className={`w-full text-start px-3.5 py-2 text-xs font-bold flex items-center gap-2.5 transition cursor-pointer ${
+                lang === 'tr' ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>🇹🇷</span>
+              <span>Türkçe</span>
+            </button>
+            <button
+              onClick={() => handleLanguageChange('en')}
+              className={`w-full text-start px-3.5 py-2 text-xs font-bold flex items-center gap-2.5 transition cursor-pointer ${
+                lang === 'en' ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>🇺🇸</span>
+              <span>English</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderToastComponent = () => {
@@ -963,14 +1050,14 @@ export default function App() {
     if (!confirmModal.isOpen) return null;
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6 border border-slate-100 text-right transform transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6 border border-slate-100 text-start transform transition-all animate-in fade-in zoom-in-95 duration-200" dir={t.dir}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
               <AlertTriangle size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900">تأكيد الإجراء المطلوب</h3>
-              <p className="text-xs text-slate-500 mt-0.5">يرجى التأكيد للمتابعة أو إلغاء الطلب</p>
+              <h3 className="text-lg font-black text-slate-900">{t.confirmRequired}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{t.confirmSub}</p>
             </div>
           </div>
 
@@ -983,13 +1070,13 @@ export default function App() {
               onClick={confirmModal.onConfirm}
               className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white py-3 rounded-xl font-bold text-sm cursor-pointer shadow-lg shadow-red-500/25 transition transform active:scale-95"
             >
-              تأكيد وحذف / تنفيذ ✅
+              {t.confirmExecute}
             </button>
             <button 
               onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: null })}
               className="px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold text-sm cursor-pointer transition"
             >
-              إلغاء ✕
+              {t.cancel}
             </button>
           </div>
         </div>
@@ -999,38 +1086,50 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans relative" dir={t.dir}>
         {renderToastComponent()}
         {renderConfirmModal()}
+        
+        {/* زر تبديل اللغة الأنيق في أعلى شاشة الدخول */}
+        <div className="absolute top-6 end-6 z-20">
+          {renderLanguageSwitcher('dark')}
+        </div>
+
         <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
           <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
-          <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
+          <div className="text-center">
+            <h2 className="text-2xl font-black text-gray-800">{t.loginTitle}</h2>
+            <p className="text-gray-500 text-sm mt-1">{t.loginSubtitle}</p>
+          </div>
           <form onSubmit={handleFirebaseLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label>
+              <label className="block text-xs font-bold text-gray-600 mb-1">{t.email}</label>
               <input 
                 type="email" 
                 value={inputEmail} 
                 onChange={e => setInputEmail(e.target.value)} 
-                onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني بشكل صحيح')}
+                onInvalid={e => e.target.setCustomValidity(t.emailValidation)}
                 onInput={e => e.target.setCustomValidity('')}
                 className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
                 required 
               />
             </div>
             <div>
-              <div className="flex justify-between items-center mb-1"><label className="block text-xs font-bold text-gray-600">كلمة المرور</label><button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600">نسيت كلمة المرور؟</button></div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-gray-600">{t.password}</label>
+                <button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600 font-semibold cursor-pointer">{t.forgotPassword}</button>
+              </div>
               <input 
                 type="password" 
                 value={inputPassword} 
                 onChange={e => setInputPassword(e.target.value)} 
-                onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة المرور المطلوبة')}
+                onInvalid={e => e.target.setCustomValidity(t.passValidation)}
                 onInput={e => e.target.setCustomValidity('')}
                 className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
                 required 
               />
             </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">تسجيل الدخول الآمن 🚀</button>
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">{t.loginBtn}</button>
           </form>
         </div>
       </div>
@@ -1075,63 +1174,67 @@ export default function App() {
     const regularClients = activeClientsList.filter(c => c.shopsList.length < 3);
 
     return (
-      <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-100 font-sans" dir={t.dir}>
         {renderToastComponent()}
         {renderConfirmModal()}
 
-        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
+        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
               <Shield size={22} />
             </div>
             <div>
-              <span className="font-extrabold text-white text-base">لوحة المدير العام والتحكم الشامل</span>
-              <p className="text-xs text-slate-400">إدارة المنصة، العملاء، وباقات الأسعار</p>
+              <span className="font-extrabold text-white text-base">{t.programmerTitle}</span>
+              <p className="text-xs text-slate-400">{t.programmerSubtitle}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
-            <LogOut size={15} /> تسجيل خروج
-          </button>
+          
+          <div className="flex items-center gap-3">
+            {renderLanguageSwitcher('dark')}
+            <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+              <LogOut size={15} /> {t.logout}
+            </button>
+          </div>
         </header>
 
         <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
           <button onClick={() => { setProgrammerTab('clients'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'clients' && !selectedClientEmail ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            👥 العملاء النشطون
+            {t.activeClientsTab}
           </button>
           <button onClick={() => { setProgrammerTab('suspendedClients'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'suspendedClients' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            ⏳ الحسابات المعلقة ({suspendedClientsList.length})
+            {t.suspendedClientsTab} ({suspendedClientsList.length})
           </button>
           <button onClick={() => { setProgrammerTab('addClient'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'addClient' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            ➕ إضافة عميل جديد
+            {t.addClientTab}
           </button>
           <button onClick={() => { setProgrammerTab('pricingPlans'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'pricingPlans' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            💰 الباقات والفروع
+            {t.pricingPlansTab}
           </button>
           <button onClick={() => { setProgrammerTab('directDiscounts'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'directDiscounts' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            🏷️ الخصومات المباشرة
+            {t.directDiscountsTab}
           </button>
           <button onClick={() => { setProgrammerTab('subscriptionsReport'); setSelectedClientEmail(null); }} className={`px-4 py-2 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${programmerTab === 'subscriptionsReport' ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' : 'text-slate-600 hover:bg-slate-100'}`}>
-            📑 كشف حسابات الاشتراكات
+            {t.subscriptionsReportTab}
           </button>
         </nav>
 
         <main className="max-w-7xl mx-auto p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-              <span className="text-gray-500 text-sm">العملاء النشطون</span>
+              <span className="text-gray-500 text-sm">{t.activeClientsStat}</span>
               <h3 className="text-3xl font-black text-slate-900 mt-1">{activeClientsList.length}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100">
-              <span className="text-gray-500 text-sm">إجمالي الفروع</span>
+              <span className="text-gray-500 text-sm">{t.totalShopsStat}</span>
               <h3 className="text-3xl font-black text-blue-600 mt-1">{shops.length}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100">
-              <span className="text-gray-500 text-sm">الفروع النشطة</span>
+              <span className="text-gray-500 text-sm">{t.activeShopsStat}</span>
               <h3 className="text-3xl font-black text-emerald-600 mt-1">{activeShopsCount}</h3>
             </div>
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
-              <span className="text-gray-500 text-sm">إجمالي الإيرادات (بعد الخصم)</span>
-              <h3 className="text-3xl font-black text-purple-600 mt-1">{totalSubscriptionRevenue} ليرة</h3>
+              <span className="text-gray-500 text-sm">{t.totalRevenueStat}</span>
+              <h3 className="text-3xl font-black text-purple-600 mt-1">{totalSubscriptionRevenue} {t.currency}</h3>
             </div>
           </div>
 
@@ -1139,23 +1242,23 @@ export default function App() {
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-purple-900 text-lg flex items-center gap-2">
-                  <Award className="text-purple-600" size={22} /> كبار العملاء / VIP النشطون (3 فروع أو أكثر)
+                  <Award className="text-purple-600" size={22} /> {t.vipClientsTitle}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vipClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء VIP نشطون حالياً.</p> : vipClients.map((client, idx) => (
+                  {vipClients.length === 0 ? <p className="text-xs text-gray-400">{t.noVipClients}</p> : vipClients.map((client, idx) => (
                     <div key={idx} className="p-5 rounded-2xl border-2 border-purple-200 bg-purple-50/20 flex flex-col justify-between space-y-4">
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
                           <h4 className="font-black text-lg text-slate-900">⭐ {client.ownerName}</h4>
                           <span className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-xl shadow-xs">
-                            🏢 {client.shopsList.length} فروع
+                            🏢 {client.shopsList.length} {t.branchesCount}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
-                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
+                        <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{client.phone}</span></p>
+                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{t.activeDiscountLabel} {client.discountPercent}%</span>}
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                        عرض الملف الكامل وفروعه 🔍
+                        {t.viewFullFile}
                       </button>
                     </div>
                   ))}
@@ -1164,23 +1267,23 @@ export default function App() {
 
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                  <Users className="text-blue-600" size={22} /> العملاء العاديون النشطون (1 إلى 2 فرع)
+                  <Users className="text-blue-600" size={22} /> {t.regularClientsTitle}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {regularClients.length === 0 ? <p className="text-xs text-gray-400">لا توجد عملاء.</p> : regularClients.map((client, idx) => (
+                  {regularClients.length === 0 ? <p className="text-xs text-gray-400">{t.noRegularClients}</p> : regularClients.map((client, idx) => (
                     <div key={idx} className="p-5 rounded-2xl border bg-gray-50 flex flex-col justify-between space-y-4">
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
                           <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-xl shadow-xs">
-                            🏢 {client.shopsList.length} فرع
+                            🏢 {client.shopsList.length} {t.branchCount}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
-                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">خصم مفعل: {client.discountPercent}%</span>}
+                        <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{client.phone}</span></p>
+                        {client.discountPercent > 0 && <span className="inline-block mt-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded">{t.activeDiscountLabel} {client.discountPercent}%</span>}
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                        عرض الملف الكامل وفروعه 🔍
+                        {t.viewFullFile}
                       </button>
                     </div>
                   ))}
@@ -1192,11 +1295,11 @@ export default function App() {
           {programmerTab === 'suspendedClients' && (
             <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
               <h3 className="font-bold text-amber-900 text-lg flex items-center gap-2">
-                ⏳ الحسابات المعلقة والمؤرشفة (بانتظار إعادة التفعيل أو انتهاء مهلة 3 أشهر)
+                {t.suspendedArchiveTitle}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {suspendedClientsList.length === 0 ? (
-                  <p className="text-xs text-gray-400">لا توجد حسابات معلقة حالياً.</p>
+                  <p className="text-xs text-gray-400">{t.noSuspendedClients}</p>
                 ) : (
                   suspendedClientsList.map((client, idx) => (
                     <div key={idx} className="p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/20 flex flex-col justify-between space-y-4">
@@ -1204,14 +1307,14 @@ export default function App() {
                         <div className="flex justify-between items-start">
                           <h4 className="font-black text-lg text-slate-900">👤 {client.ownerName}</h4>
                           <span className="px-3 py-1 bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs">
-                            معلق / مؤرشف
+                            {t.suspendedBadge}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{client.phone}</span></p>
+                        <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{client.phone}</span></p>
                         <p className="text-xs text-red-600 font-semibold mt-1">عدد الفروع المعلقة: {client.shopsList.length}</p>
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
-                        إدارة الحساب وتفعيله 🔍
+                        {t.manageAndActivate}
                       </button>
                     </div>
                   ))
@@ -1225,53 +1328,53 @@ export default function App() {
               <div className="flex items-center gap-3 border-b pb-4">
                 <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><UserPlus size={24} /></div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">إضافة عميل جديد للنظام</h3>
-                  <p className="text-xs text-gray-500">سيحصل العميل تلقائياً على فترة تجريبية مجانية لمدة 7 أيام</p>
+                  <h3 className="text-xl font-bold text-gray-900">{t.addNewClientTitle}</h3>
+                  <p className="text-xs text-gray-500">{t.addNewClientSubtitle}</p>
                 </div>
               </div>
 
               <form onSubmit={handleProgrammerAddClient} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">اسم العميل الكامل *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientFullName}</label>
                     <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم العميل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني (Gmail) *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientEmail}</label>
                     <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">رقم الهاتف (التركي - أقصى 11 رقماً)</label>
-                    <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-right" />
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientPhone}</label>
+                    <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white text-start" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientTax}</label>
                     <input type="text" value={newClientTax} onChange={e => setNewClientTax(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                   </div>
                 </div>
 
                 <div className="border-t pt-4 space-y-3">
-                  <h4 className="font-bold text-sm text-purple-700">تفاصيل الفرع الأول:</h4>
-                  <input type="text" placeholder="اسم الفرع الأول *" value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع الأول')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  <h4 className="font-bold text-sm text-purple-700">{t.firstBranchDetails}</h4>
+                  <input type="text" placeholder={t.firstBranchName} value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع الأول')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">إيميل العامل *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.workerEmail}</label>
                       <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">كلمة سر العامل *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.workerPass}</label>
                       <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة سر العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                   </div>
 
-                  <input type="text" placeholder="عنوان الفرع" value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
+                  <input type="text" placeholder={t.branchAddress} value={newClientAddress} onChange={e => setNewClientAddress(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" />
                 </div>
 
-                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">تسجيل العميل ومنحه 7 أيام تجريبية 🚀</button>
+                <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">{t.registerClientBtn}</button>
               </form>
             </div>
           )}
@@ -1283,15 +1386,15 @@ export default function App() {
                 <div className="flex items-center gap-3 border-b pb-4">
                   <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl"><Plus size={24} /></div>
                   <div>
-                    <h3 className="text-xl font-black text-gray-900">إضافة باقة اشتراك جديدة</h3>
-                    <p className="text-xs text-gray-500">أنشئ باقة جديدة وحدد سعرها والحد الأقصى للفروع المسموحة</p>
+                    <h3 className="text-xl font-black text-gray-900">{t.addNewPlanTitle}</h3>
+                    <p className="text-xs text-gray-500">{t.addNewPlanSub}</p>
                   </div>
                 </div>
 
                 <form onSubmit={handleAddPricingPlan} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">اسم الباقة *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.planName}</label>
                       <input 
                         type="text" 
                         placeholder="مثال: الباقة الذهبية" 
@@ -1304,10 +1407,10 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">معرف الباقة (الانجليزي -اختياري)</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.planKeyEn}</label>
                       <input 
                         type="text" 
-                        placeholder="مثال: gold_plan" 
+                        placeholder="gold_plan" 
                         value={newPlanType} 
                         onChange={e => setNewPlanType(e.target.value)} 
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-semibold font-mono" 
@@ -1317,10 +1420,10 @@ export default function App() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">السعر (ليرة) *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.planPrice}</label>
                       <input 
                         type="number" 
-                        placeholder="مثال: 7500" 
+                        placeholder="7500" 
                         value={newPlanPrice} 
                         onChange={e => setNewPlanPrice(e.target.value)} 
                         onInvalid={e => e.target.setCustomValidity('يرجى تحديد السعر')}
@@ -1330,10 +1433,10 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">الحد الأقصى لعدد الفروع المسموحة *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.planMaxShops}</label>
                       <input 
                         type="number" 
-                        placeholder="مثال: 7" 
+                        placeholder="7" 
                         value={newPlanMaxShops} 
                         onChange={e => setNewPlanMaxShops(e.target.value)} 
                         onInvalid={e => e.target.setCustomValidity('يرجى تحديد الحد الأقصى للفروع')}
@@ -1345,15 +1448,15 @@ export default function App() {
                   </div>
 
                   <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md transition">
-                    إضافة الباقة الجديدة للنظام 🌟
+                    {t.addNewPlanBtn}
                   </button>
                 </form>
               </div>
 
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6">
                 <div className="flex justify-between items-center border-b pb-4">
-                  <h3 className="font-black text-lg text-gray-900">💰 الباقات الحالية المتاحة ({pricingPlans.length}):</h3>
-                  <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">تحكم كامل</span>
+                  <h3 className="font-black text-lg text-gray-900">{t.currentPlansTitle} ({pricingPlans.length}):</h3>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">{t.fullControlBadge}</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1362,20 +1465,20 @@ export default function App() {
                       {editingPlanId === plan.id ? (
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 mb-1">اسم الباقة:</label>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">{t.planName}:</label>
                             <input type="text" value={editPlanName} onChange={e => setEditPlanName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 mb-1">السعر (ليرة):</label>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">{t.planPrice}:</label>
                             <input type="number" value={editPlanPrice} onChange={e => setEditPlanPrice(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-600 mb-1">الحد الأقصى للفروع:</label>
+                            <label className="block text-[11px] font-bold text-gray-600 mb-1">{t.planMaxShops}:</label>
                             <input type="number" value={editPlanMaxShops} onChange={e => setEditPlanMaxShops(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold text-gray-900 bg-white" />
                           </div>
                           <div className="flex gap-2 pt-2">
-                            <button onClick={() => handleSaveEditPlan(plan.id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold">حفظ ✅</button>
-                            <button onClick={() => setEditingPlanId(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-xl text-xs font-bold">إلغاء</button>
+                            <button onClick={() => handleSaveEditPlan(plan.id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold">{t.save}</button>
+                            <button onClick={() => setEditingPlanId(null)} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded-xl text-xs font-bold">{t.cancel}</button>
                           </div>
                         </div>
                       ) : (
@@ -1385,20 +1488,20 @@ export default function App() {
                               <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
                               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">{plan.type}</span>
                             </div>
-                            <p className="text-2xl font-black text-purple-600 pt-1">{plan.price} {plan.currency}</p>
+                            <p className="text-2xl font-black text-purple-600 pt-1">{plan.price} {t.currency}</p>
                             <div className="pt-2">
                               <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-200">
-                                الحد الأقصى: {plan.maxShops} فروع مسموحة
+                                {t.maxShopsAllowed} {plan.maxShops} {t.branchesCount}
                               </span>
                             </div>
                           </div>
 
                           <div className="flex gap-2 pt-3 border-t">
                             <button onClick={() => handleStartEditPlan(plan)} className="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                              <Edit3 size={13} /> تعديل
+                              <Edit3 size={13} /> {t.edit}
                             </button>
                             <button onClick={() => handleDeletePricingPlan(plan.id)} className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                              <Trash2 size={13} /> حذف
+                              <Trash2 size={13} /> {t.delete}
                             </button>
                           </div>
                         </>
@@ -1407,19 +1510,18 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
             </div>
           )}
 
           {programmerTab === 'directDiscounts' && (
             <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6">
               <div className="border-b pb-4">
-                <h3 className="text-xl font-bold text-gray-900">🏷️ نظام الخصومات المباشرة على الاشتراكات</h3>
-                <p className="text-xs text-gray-500">اختر العميل وحدد نسبة الخصم المباشر (مثلاً خصم 50%)</p>
+                <h3 className="text-xl font-bold text-gray-900">{t.directDiscountsTitle}</h3>
+                <p className="text-xs text-gray-500">{t.directDiscountsSubtitle}</p>
               </div>
 
               <form onSubmit={handleApplyDirectDiscountToClient} className="bg-purple-50/60 p-5 rounded-2xl border border-purple-200 space-y-3">
-                <h4 className="font-bold text-sm text-purple-900">تطبيق خصم مباشر على عميل محدد:</h4>
+                <h4 className="font-bold text-sm text-purple-900">{t.applyDiscountHeading}</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <select 
                     value={targetClientEmailForDiscount} 
@@ -1427,12 +1529,12 @@ export default function App() {
                     className="px-3 py-2.5 border rounded-xl text-sm bg-white text-gray-900 font-bold"
                     required
                   >
-                    <option value="">-- اختر العميل (صاحب المحل) --</option>
+                    <option value="">{t.selectClientOption}</option>
                     {activeClientsList.map((c, i) => <option key={i} value={c.ownerEmail}>{c.ownerName}</option>)}
                   </select>
                   <input 
                     type="number" 
-                    placeholder="نسبة الخصم % (مثال: 50)" 
+                    placeholder={t.discountPercentPlaceholder} 
                     value={directDiscountValue} 
                     onChange={e => setDirectDiscountValue(e.target.value)} 
                     className="px-3 py-2.5 border rounded-xl text-sm bg-white text-gray-900 font-bold" 
@@ -1441,21 +1543,21 @@ export default function App() {
                 </div>
                 <div className="flex justify-end pt-1">
                   <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs cursor-pointer shadow-sm">
-                    تطبيق الخصم المباشر على العميل 🏷️✨
+                    {t.applyDiscountBtn}
                   </button>
                 </div>
               </form>
 
               <div className="space-y-3 pt-4">
-                <h4 className="font-bold text-gray-900 text-base">قائمة العملاء الذين لديهم خصومات مفعلة ({clientsWithDiscounts.length}):</h4>
+                <h4 className="font-bold text-gray-900 text-base">{t.clientsWithDiscountsTitle} ({clientsWithDiscounts.length}):</h4>
                 {clientsWithDiscounts.length === 0 ? (
-                  <p className="text-xs text-gray-500">لا توجد خصومات مفعلة لأي عميل حالياً.</p>
+                  <p className="text-xs text-gray-500">{t.noClientsWithDiscounts}</p>
                 ) : (
                   clientsWithDiscounts.map((client, idx) => (
                     <div key={idx} className="p-4 rounded-xl border bg-emerald-50/50 border-emerald-200 flex justify-between items-center text-sm">
                       <div>
                         <span className="font-bold text-slate-900">👤 {client.ownerName}</span>
-                        <p className="text-xs text-emerald-700 font-bold mt-0.5">نسبة الخصم المفعلة: {client.discountPercent}% على جميع فروعه</p>
+                        <p className="text-xs text-emerald-700 font-bold mt-0.5">{t.activeDiscountOnAllShops} {client.discountPercent}%</p>
                       </div>
                       <button 
                         onClick={async () => {
@@ -1467,7 +1569,7 @@ export default function App() {
                         }}
                         className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
                       >
-                        إلغاء الخصم ❌
+                        {t.cancelDiscount}
                       </button>
                     </div>
                   ))
@@ -1480,7 +1582,7 @@ export default function App() {
             <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
               <div className="flex justify-between items-center border-b pb-4">
                 <div>
-                  <span className="text-xs font-bold text-purple-600 uppercase">ملف العميل التجاري والضريبي</span>
+                  <span className="text-xs font-bold text-purple-600 uppercase">{t.clientCommercialFile}</span>
                   <h2 className="text-2xl font-black text-slate-900 mt-1">👤 {selectedClient.ownerName}</h2>
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -1488,61 +1590,60 @@ export default function App() {
                     onClick={() => setEditingClientData({ ownerName: selectedClient.ownerName, ownerEmail: selectedClient.ownerEmail, taxNumber: selectedClient.taxNumber, phone: selectedClient.phone })}
                     className="bg-blue-100 text-blue-700 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    تعديل البيانات ✏️
+                    {t.edit} ✏️
                   </button>
                   <button 
                     onClick={() => handleSuspendClientForMonths(selectedClient.ownerEmail)}
                     className="bg-amber-100 text-amber-800 px-3 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    تعليق وحفظ الحساب لمدة 3 أشهر ⏳
+                    {t.suspendGracePeriod}
                   </button>
                   <button 
                     onClick={() => setSelectedClientEmail(null)}
                     className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
                   >
-                    العودة 🔙
+                    {t.back}
                   </button>
                 </div>
               </div>
 
               {editingClientData && (
                 <form onSubmit={handleSaveClientEdits} className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-3">
-                  <h4 className="font-bold text-sm text-blue-900">تعديل بيانات العميل أو تحديث بيانات الدخول والضريبة:</h4>
+                  <h4 className="font-bold text-sm text-blue-900">{t.editClientDataTitle}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder="اسم العميل" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
-                    <input type="text" dir="ltr" maxLength={11} value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value.replace(/\D/g, '').slice(0, 11)})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-right" />
+                    <input type="text" dir="ltr" maxLength={11} value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value.replace(/\D/g, '').slice(0, 11)})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-start" />
                     <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">حفظ التعديلات ✅</button>
-                    <button type="button" onClick={() => setEditingClientData(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">إلغاء</button>
+                    <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">{t.save}</button>
+                    <button type="button" onClick={() => setEditingClientData(null)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">{t.cancel}</button>
                   </div>
                 </form>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-purple-50/50 p-5 rounded-2xl border border-purple-100">
                 <div>
-                  <span className="text-xs text-gray-500 block">رقم الهاتف</span>
+                  <span className="text-xs text-gray-500 block">{t.phoneLabel}</span>
                   <strong className="text-sm text-slate-900" dir="ltr">{selectedClient.phone}</strong>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500 block">المعرف / الرقم الضريبي</span>
+                  <span className="text-xs text-gray-500 block">{t.taxNumberLabel}</span>
                   <strong className="text-sm text-purple-700 font-mono text-base">{selectedClient.taxNumber}</strong>
                 </div>
               </div>
 
-              {/* 🌟 منطقة منح وحذف الاشتراكات المرتبطة تلقائياً بصفحة وباقات الاشتراكات */}
               <div className="p-6 bg-slate-900 text-white rounded-3xl space-y-4 shadow-xl">
                 <div className="flex justify-between items-center flex-wrap gap-2">
                   <div>
-                    <h4 className="font-extrabold text-base">إدارة باقات واشتراكات العميل الأساسي (تُطبق على العميل وصلاحية فروعه):</h4>
-                    <p className="text-xs text-slate-300 mt-0.5">يملك هذا العميل {selectedClient.shopsList.length} فرعاً مسجلاً في المنصة.</p>
+                    <h4 className="font-extrabold text-base">{t.manageClientSubsHeading}</h4>
+                    <p className="text-xs text-slate-300 mt-0.5">{t.ownsShopsCount.replace('{count}', selectedClient.shopsList.length)}</p>
                   </div>
                   <button 
                     onClick={() => handleRemoveClientSubscription(selectedClient.ownerEmail)}
                     className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition shadow-md flex items-center gap-1.5"
                   >
-                    <Trash2 size={15} /> إلغاء / حذف الاشتراك ❌
+                    <Trash2 size={15} /> {t.cancelSubBtn}
                   </button>
                 </div>
 
@@ -1553,37 +1654,37 @@ export default function App() {
                       onClick={() => handleUpdateClientSubscription(selectedClient.ownerEmail, plan.type)} 
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition shadow-sm flex items-center gap-1.5"
                     >
-                      <span>📅</span> منح ({plan.name} - الحد: {plan.maxShops} فروع)
+                      <span>📅</span> {t.grantPlanBtn.replace('{name}', plan.name).replace('{max}', plan.maxShops)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-gray-900 text-base">فروع المغاسل التابعة لهذا العميل ({selectedClient.shopsList.length}):</h4>
+                <h4 className="font-bold text-gray-900 text-base">{t.shopsBelongingToClient} ({selectedClient.shopsList.length}):</h4>
                 {selectedClient.shopsList.map(shop => (
                   <div key={shop.id} className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${shop.status === 'suspended' ? 'bg-red-50 border-red-200' : 'bg-gray-50'}`}>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-base text-gray-900">🏪 {shop.name}</span>
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${shop.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {shop.status === 'active' ? 'نشط' : 'معلق / مؤرشف'}
+                          {shop.status === 'active' ? t.activeStatus : t.suspendedStatus}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">📍 العنوان: {shop.address} | الهاتف: <span dir="ltr">{shop.phone}</span></p>
+                      <p className="text-xs text-gray-600 mt-1">📍 {t.branchAddress}: {shop.address} | {t.phoneLabel} <span dir="ltr">{shop.phone}</span></p>
                       <div className="mt-1 text-xs font-bold text-blue-600">
-                        الاشتراك الأساسي الممنوح للعميل: {shop.subscriptionType === 'trial' ? '⏳ تجريبي (7 أيام)' : shop.subscriptionType} | ينتهي في: {shop.subscriptionExpiry || 'غير محدد'}
+                        {t.basicSubGranted} {shop.subscriptionType === 'trial' ? t.trialText : shop.subscriptionType} | {t.expiresIn} {shop.subscriptionExpiry || t.unspecified}
                       </div>
                     </div>
 
                     <div className="flex gap-2">
                       {shop.status === 'active' ? (
                         <button onClick={() => handleSuspendShop(shop.id)} className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">
-                          إيقاف الفرع
+                          {t.stopShop}
                         </button>
                       ) : (
                         <button onClick={() => handleActivateShop(shop.id)} className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer">
-                          تفعيل الفرع
+                          {t.activateShop}
                         </button>
                       )}
                     </div>
@@ -1598,24 +1699,24 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gradient-to-r from-purple-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex items-center justify-between">
                   <div>
-                    <span className="text-purple-300 text-xs font-bold uppercase tracking-wider">إجمالي الإيرادات (بعد الخصومات)</span>
-                    <h3 className="text-3xl font-black text-emerald-400 mt-1">{totalSubscriptionRevenue} ليرة</h3>
+                    <span className="text-purple-300 text-xs font-bold uppercase tracking-wider">{t.totalRevenueStat}</span>
+                    <h3 className="text-3xl font-black text-emerald-400 mt-1">{totalSubscriptionRevenue} {t.currency}</h3>
                   </div>
                   <div className="bg-white/10 p-4 rounded-2xl"><Wallet size={28} className="text-purple-300" /></div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي العملاء النشطين</span>
-                    <h3 className="text-3xl font-black text-slate-900 mt-1">{activeClientsList.length} عميل</h3>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">{t.activeClientsStat}</span>
+                    <h3 className="text-3xl font-black text-slate-900 mt-1">{activeClientsList.length}</h3>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-2xl"><UsersRound size={28} className="text-purple-600" /></div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">إجمالي الفروع النشطة</span>
-                    <h3 className="text-3xl font-black text-blue-600 mt-1">{activeShopsCount} فرع</h3>
+                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">{t.activeShopsStat}</span>
+                    <h3 className="text-3xl font-black text-blue-600 mt-1">{activeShopsCount}</h3>
                   </div>
                   <div className="bg-blue-50 p-4 rounded-2xl"><Building size={28} className="text-blue-600" /></div>
                 </div>
@@ -1624,7 +1725,7 @@ export default function App() {
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
                   <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-                    <FileSpreadsheet className="text-purple-600" size={22} /> كشف الحسابات المالي للاشتراكات النشطة
+                    <FileSpreadsheet className="text-purple-600" size={22} /> {t.subsStatementTitle}
                   </h3>
                   <button 
                     onClick={handleRefreshData} 
@@ -1632,21 +1733,21 @@ export default function App() {
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
                   >
                     <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                    {isRefreshing ? 'جاري التحديث...' : 'تحديث البيانات'}
+                    {isRefreshing ? t.refreshing : t.refreshData}
                   </button>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-right text-sm">
+                  <table className="w-full text-start text-sm">
                     <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                       <tr>
-                        <th className="p-3">صاحب المحل (العميل)</th>
-                        <th className="p-3">عدد الفروع النشطة</th>
-                        <th className="p-3">نوع الباقة</th>
-                        <th className="p-3">نسبة الخصم المباشر</th>
-                        <th className="p-3">الإيراد الصافي (بعد الخصم)</th>
-                        <th className="p-3">انتهاء الاشتراك</th>
-                        <th className="p-3">الحالة العامة</th>
+                        <th className="p-3">{t.shopOwnerCol}</th>
+                        <th className="p-3">{t.activeBranchesCol}</th>
+                        <th className="p-3">{t.planTypeCol}</th>
+                        <th className="p-3">{t.directDiscountCol}</th>
+                        <th className="p-3">{t.netRevenueCol}</th>
+                        <th className="p-3">{t.subExpiryCol}</th>
+                        <th className="p-3">{t.generalStatusCol}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -1660,14 +1761,14 @@ export default function App() {
                         return (
                           <tr key={idx} className="hover:bg-gray-50">
                             <td className="p-3 font-bold text-slate-900">👤 {client.ownerName}</td>
-                            <td className="p-3 font-bold text-purple-700">🏢 {activeShopsForClient} فروع</td>
-                            <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? '⏳ تجريبي' : firstShop.subscriptionType}</td>
-                            <td className="p-3 font-bold text-emerald-600">{disc > 0 ? `${disc}% خصم` : 'بدون خصم'}</td>
-                            <td className="p-3 font-black text-purple-700">{finalPrice} ليرة</td>
-                            <td className="p-3 font-mono">{firstShop.subscriptionExpiry || 'غير محدد'}</td>
+                            <td className="p-3 font-bold text-purple-700">🏢 {activeShopsForClient} {t.branchesCount}</td>
+                            <td className="p-3 font-semibold text-blue-600">{firstShop.subscriptionType === 'trial' ? t.trialText : firstShop.subscriptionType}</td>
+                            <td className="p-3 font-bold text-emerald-600">{disc > 0 ? `${disc}%` : t.noDiscount}</td>
+                            <td className="p-3 font-black text-purple-700">{finalPrice} {t.currency}</td>
+                            <td className="p-3 font-mono">{firstShop.subscriptionExpiry || t.unspecified}</td>
                             <td className="p-3">
                               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                                نشط
+                                {t.activeStatus}
                               </span>
                             </td>
                           </tr>
@@ -1698,23 +1799,26 @@ export default function App() {
     });
 
     return (
-      <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-100 font-sans" dir={t.dir}>
         {renderToastComponent()}
         {renderConfirmModal()}
 
-        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
+        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center">
               <Car size={22} />
             </div>
             <div>
               <h1 className="font-extrabold text-white text-base">{currentUser.shopName}</h1>
-              <span className="text-xs text-cyan-300 font-medium">شاشة العامل النشطة</span>
+              <span className="text-xs text-cyan-300 font-medium">{t.activeWorkerScreen}</span>
             </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
-            <LogOut size={15} /> تسجيل خروج
-          </button>
+          <div className="flex items-center gap-3">
+            {renderLanguageSwitcher('dark')}
+            <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+              <LogOut size={15} /> {t.logout}
+            </button>
+          </div>
         </header>
 
         <main className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
@@ -1739,28 +1843,28 @@ export default function App() {
             <div className="space-y-6">
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <Car className="text-blue-600" /> {editingTxId ? 'تعديل معلومات المركبة ✏️' : 'تسجيل غسيل جديد'}
+                  <Car className="text-blue-600" /> {editingTxId ? t.editVehicleInfo : t.registerNewWash}
                 </h3>
                 <form onSubmit={handleAddTransaction} className="space-y-3">
                   <div className="space-y-1">
-                    <label className="block text-xs font-bold text-gray-700">نوع المركبة *</label>
+                    <label className="block text-xs font-bold text-gray-700">{t.vehicleType}</label>
                     <div className="grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => setVehicleCategory('سيارة')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'سيارة' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
-                        <Car size={16} /> سيارة
+                        <Car size={16} /> {t.car}
                       </button>
                       <button type="button" onClick={() => setVehicleCategory('موتور')} className={`py-2.5 text-xs font-bold rounded-xl border cursor-pointer flex items-center justify-center gap-1.5 ${vehicleCategory === 'موتور' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>
-                        <Bike size={16} /> موتور / دراجة
+                        <Bike size={16} /> {t.motorcycle}
                       </button>
                     </div>
                   </div>
 
                   {vehicleCategory === 'سيارة' && (
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">اختر أو ابحث عن موديل السيارة *</label>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">{t.selectCarModel}</label>
                       <input 
                         type="text" 
                         list="carModelsLibrary" 
-                        placeholder="ابحث بالماركة أو الموديل..." 
+                        placeholder={t.searchCarPlaceholder} 
                         value={carModel} 
                         onChange={e => setCarModel(e.target.value)} 
                         onInvalid={e => e.target.setCustomValidity('يرجى تحديد موديل السيارة')}
@@ -1776,56 +1880,55 @@ export default function App() {
                     </div>
                   )}
 
-                  <input type="text" placeholder="رقم اللوحة *" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم اللوحة')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
+                  <input type="text" placeholder={t.plateNumber} value={plateNumber} onChange={e => setPlateNumber(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم اللوحة')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
                   
                   <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
-                    <option>غسيل خارجي فقط</option>
-                    <option>غسيل خارجي وداخلي</option>
-                    <option>غسيل كامل مع تلميع</option>
-                    <option>غسيل موتور</option>
+                    {t.servicesList.map((srv, idx) => (
+                      <option key={idx} value={srv}>{srv}</option>
+                    ))}
                   </select>
                   
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)} placeholder="وقت البدء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
-                    <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)} placeholder="وقت الانتهاء" className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                    <input type="text" value={startTime} onChange={e => setStartTime(e.target.value)} placeholder={t.startTimePlaceholder} className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
+                    <input type="text" value={endTime} onChange={e => setEndTime(e.target.value)} placeholder={t.endTimePlaceholder} className="px-3 py-2 border rounded-xl text-sm text-center font-bold text-gray-900" />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">السعر (تحديد يدوي) *</label>
-                    <input type="number" placeholder="أدخل السعر (ليرة)" value={price} onChange={e => setPrice(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال السعر المطلوب')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.priceManual}</label>
+                    <input type="number" placeholder={t.enterPricePlaceholder} value={price} onChange={e => setPrice(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال السعر المطلوب')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">ملاحظات (اختياري)</label>
-                    <input type="text" placeholder="ملاحظات حول حالة السيارة..." value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
+                    <label className="block text-xs font-bold text-gray-700 mb-1">{t.notesOptional}</label>
+                    <input type="text" placeholder={t.notesPlaceholder} value={txNotes} onChange={e => setTxNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs text-gray-900 bg-white" />
                   </div>
 
                   <div className="space-y-3">
-                    <label className="block text-xs font-bold text-gray-700">توثيق حالة المركبة بالصور</label>
+                    <label className="block text-xs font-bold text-gray-700">{t.photoDocumentation}</label>
                     
                     <div className="p-3 bg-blue-50/50 border border-blue-200 rounded-2xl space-y-2">
-                      <span className="text-[11px] font-bold text-blue-900 block">صورة قبل الغسيل: {beforePhoto ? '✓ تمت الإضافة' : ''}</span>
+                      <span className="text-[11px] font-bold text-blue-900 block">{t.beforeWashPhoto} {beforePhoto ? t.photoAddedCheck : ''}</span>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                          <Camera size={16} /> فتح الكاميرا
+                          <Camera size={16} /> {t.openCamera}
                           <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
                         </label>
                         <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                          <ImageIcon size={16} /> من الاستوديو
+                          <ImageIcon size={16} /> {t.fromGallery}
                           <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'before')} className="hidden" />
                         </label>
                       </div>
                     </div>
 
                     <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-2">
-                      <span className="text-[11px] font-bold text-emerald-900 block">صورة بعد الغسيل: {afterPhoto ? '✓ تمت الإضافة' : ''}</span>
+                      <span className="text-[11px] font-bold text-emerald-900 block">{t.afterWashPhoto} {afterPhoto ? t.photoAddedCheck : ''}</span>
                       <div className="grid grid-cols-2 gap-2">
                         <label className="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                          <Camera size={16} /> فتح الكاميرا
+                          <Camera size={16} /> {t.openCamera}
                           <input type="file" accept="image/*" capture="environment" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
                         </label>
                         <label className="flex items-center justify-center gap-1.5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer shadow-xs">
-                          <ImageIcon size={16} /> من الاستوديو
+                          <ImageIcon size={16} /> {t.fromGallery}
                           <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'after')} className="hidden" />
                         </label>
                       </div>
@@ -1833,43 +1936,45 @@ export default function App() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-xs font-bold text-gray-700">طريقة الدفع</label>
+                    <label className="block text-xs font-bold text-gray-700">{t.paymentMethod}</label>
                     <div className="grid grid-cols-3 gap-2">
-                      <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50 text-gray-800'}`}>كاش 💵</button>
-                      <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>بنك 💳</button>
-                      <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50 text-gray-800'}`}>دين ⚠️</button>
+                      <button type="button" onClick={() => setPayMethod('كاش')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-50 text-gray-800'}`}>{t.cash}</button>
+                      <button type="button" onClick={() => setPayMethod('بنك')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-800'}`}>{t.bank}</button>
+                      <button type="button" onClick={() => setPayMethod('دين')} className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${payMethod === 'دين' ? 'bg-red-600 text-white' : 'bg-gray-50 text-gray-800'}`}>{t.debt}</button>
                     </div>
                   </div>
 
                   {payMethod === 'دين' && (
                     <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
-                      <span className="text-xs font-bold text-red-700 block">بيانات الزبون المتدين (ترسل لصاحب المحل):</span>
-                      <input type="text" placeholder="اسم الزبون الكامل *" value={debtorName} onChange={e => setDebtorName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الزبون')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                      <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-right" required />
+                      <span className="text-xs font-bold text-red-700 block">{t.debtorDetails}</span>
+                      <input type="text" placeholder={t.debtorFullName} value={debtorName} onChange={e => setDebtorName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الزبون')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                      <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-start" required />
                     </div>
                   )}
 
                   <div className="flex gap-2">
                     <button type="submit" className="flex-1 bg-cyan-600 hover:bg-cyan-700 text-white py-3.5 rounded-xl font-bold text-sm cursor-pointer shadow-md">
-                      {editingTxId ? 'تحديث المعلومات ✏️' : 'حفظ الطلب والتحديث 🚀'}
+                      {editingTxId ? t.updateInfo : t.saveOrderAndRefresh}
                     </button>
                     {editingTxId && (
-                      <button type="button" onClick={() => { setEditingTxId(null); setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); }} className="px-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs">إلغاء</button>
+                      <button type="button" onClick={() => { setEditingTxId(null); setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); }} className="px-4 bg-gray-200 text-gray-700 rounded-xl font-bold text-xs">{t.cancel}</button>
                     )}
                   </div>
                 </form>
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> تسجيل مصروف لـ {currentUser.shopName}</h3>
+                <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> {t.recordExpenseFor} {currentUser.shopName}</h3>
                 <form onSubmit={handleAddExpense} className="space-y-3">
                   <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
-                    <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
+                    {t.expCategories.map((c, i) => (
+                      <option key={i} value={c}>{c}</option>
+                    ))}
                   </select>
-                  <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                  <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                  <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
-                  <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
+                  <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <textarea placeholder={t.expNotesPlaceholder} value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
+                  <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">{t.deductAndSaveExp}</button>
                 </form>
               </div>
             </div>
@@ -1877,37 +1982,37 @@ export default function App() {
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
-                  <h3 className="font-bold text-amber-800 flex items-center gap-2">⚠️ قائمة الديون المعلقة (تسديد ديون الزبائن)</h3>
+                  <h3 className="font-bold text-amber-800 flex items-center gap-2">{t.pendingDebtsTitle}</h3>
                 </div>
                 {shopDebts.length === 0 ? (
-                  <p className="text-xs text-gray-400">لا توجد ديون معلقة على زبائن هذا الفرع حالياً.</p>
+                  <p className="text-xs text-gray-400">{t.noDebtsForShop}</p>
                 ) : (
                   <div className="space-y-3">
                     {shopDebts.map(d => (
                       <div key={d.id} className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-sm">
                         <div>
-                          <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName} (<span dir="ltr">{d.phone}</span>)</span>
-                          <p className="text-xs text-gray-600">الخدمة: {d.service} | المبلغ: <strong className="text-red-600">{d.amount} ليرة</strong></p>
-                          <span className="text-[10px] text-gray-400">تاريخ الدين: {d.date}</span>
+                          <span className="font-bold text-gray-900">{t.customerLabel} {d.debtorName} (<span dir="ltr">{d.phone}</span>)</span>
+                          <p className="text-xs text-gray-600">{t.serviceLabel} {d.service} | {t.amountLabel} <strong className="text-red-600">{d.amount} {t.currency}</strong></p>
+                          <span className="text-[10px] text-gray-400">{t.debtDateLabel} {d.date}</span>
                         </div>
 
                         {settlingDebtId === d.id ? (
                           <div className="bg-white p-3 rounded-xl border shadow-sm space-y-2 w-full md:w-auto">
-                            <span className="text-xs font-bold text-emerald-700 block">اختر طريقة السداد وتاريخه:</span>
+                            <span className="text-xs font-bold text-emerald-700 block">{t.chooseSettleMethodAndDate}</span>
                             <div className="flex gap-2">
-                              <button type="button" onClick={() => setRepayMethod('كاش')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`}>كاش 💵</button>
-                              <button type="button" onClick={() => setRepayMethod('بنك')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>بنك 💳</button>
+                              <button type="button" onClick={() => setRepayMethod('كاش')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'كاش' ? 'bg-emerald-600 text-white' : 'bg-gray-100'}`}>{t.cash}</button>
+                              <button type="button" onClick={() => setRepayMethod('بنك')} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${repayMethod === 'بنك' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>{t.bank}</button>
                             </div>
                             <input type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} className="w-full px-2 py-1 border rounded-lg text-xs text-gray-900" />
-                            <input type="text" placeholder="ملاحظات السداد (اختياري)..." value={repayNotes} onChange={e => setRepayNotes(e.target.value)} className="w-full px-2 py-1 border rounded-lg text-xs text-gray-900" />
+                            <input type="text" placeholder={t.notesPlaceholder} value={repayNotes} onChange={e => setRepayNotes(e.target.value)} className="w-full px-2 py-1 border rounded-lg text-xs text-gray-900" />
                             <div className="flex gap-2 pt-1">
-                              <button onClick={() => handleSettleDebtAction(shopId, d)} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">تأكيد التسديد ✅</button>
-                              <button onClick={() => setSettlingDebtId(null)} className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold">إلغاء</button>
+                              <button onClick={() => handleSettleDebtAction(shopId, d)} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">{t.confirmSettle}</button>
+                              <button onClick={() => setSettlingDebtId(null)} className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold">{t.cancel}</button>
                             </div>
                           </div>
                         ) : (
                           <button onClick={() => setSettlingDebtId(d.id)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 shadow-xs">
-                            <CheckSquare size={14} /> تسديد الدين
+                            <CheckSquare size={14} /> {t.settleDebtBtn}
                           </button>
                         )}
                       </div>
@@ -1919,14 +2024,14 @@ export default function App() {
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                   <h3 className="font-bold text-gray-800">
-                    {selectedDateFilter ? `مركبات تاريخ: ${selectedDateFilter}` : 'سجلات جميع التواريخ القديمة'} 
-                    <span className="text-xs text-purple-600 font-semibold mr-2">({filteredWorkerTx.length} نتيجة)</span>
+                    {selectedDateFilter ? `${t.vehiclesOfDate} ${selectedDateFilter}` : t.oldRecords} 
+                    <span className="text-xs text-purple-600 font-semibold mx-2">({filteredWorkerTx.length} {t.resultsCount})</span>
                   </h3>
                   
                   <div className="flex items-center gap-2 flex-wrap">
                     <input 
                       type="text" 
-                      placeholder="بحث برقم اللوحة 🔍" 
+                      placeholder={t.searchPlatePlaceholder} 
                       value={plateSearchQuery} 
                       onChange={e => setPlateSearchQuery(e.target.value)}
                       className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1943,14 +2048,14 @@ export default function App() {
                       onClick={() => setSelectedDateFilter(new Date().toISOString().slice(0, 10))}
                       className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
                     >
-                      اليوم 📅
+                      {t.today}
                     </button>
 
                     <button 
                       onClick={() => setSelectedDateFilter('')}
                       className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
                     >
-                      كل السجلات 📂
+                      {t.allRecords}
                     </button>
 
                     <button 
@@ -1959,33 +2064,33 @@ export default function App() {
                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
                     >
                       <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                      {isRefreshing ? 'جاري التحديث...' : 'تحديث'}
+                      {isRefreshing ? t.refreshing : t.refreshData}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   {filteredWorkerTx.length === 0 ? (
-                    <p className="text-xs text-gray-400 py-4 text-center">لا توجد عمليات مسجلة تطابق بحثك أو التاريخ المختار.</p>
+                    <p className="text-xs text-gray-400 py-4 text-center">{t.noTransactionsFound}</p>
                   ) : (
-                    filteredWorkerTx.map(t => (
-                      <div key={t.id} className="p-4 bg-gray-50 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    filteredWorkerTx.map(tItem => (
+                      <div key={tItem.id} className="p-4 bg-gray-50 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold block text-base text-gray-900">🏪 {currentUser.shopName}</span>
-                            <span className="text-[11px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">التاريخ: {t.date || 'غير محدد'}</span>
+                            <span className="text-[11px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">{t.dateLabel} {tItem.date || t.unspecified}</span>
                           </div>
-                          <span className="text-sm font-semibold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span>
-                          <p className="text-xs text-gray-600">{t.service} | الطريقة: {t.method === 'دين' ? 'دين ⚠️' : t.method}</p>
-                          {t.notes && <p className="text-xs text-amber-700 italic">ملاحظة: {t.notes}</p>}
-                          <span className="text-xs font-bold text-emerald-600">المبلغ المدخل: {t.price} ليرة {t.method === 'دين' && '(على الذمة)'}</span>
+                          <span className="text-sm font-semibold text-blue-600">[{tItem.vehicleCategory}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span>
+                          <p className="text-xs text-gray-600">{tItem.service} | {t.paymentMethod}: {tItem.method === 'دين' ? t.debt : tItem.method}</p>
+                          {tItem.notes && <p className="text-xs text-amber-700 italic">{t.notesOptional}: {tItem.notes}</p>}
+                          <span className="text-xs font-bold text-emerald-600">{t.inputAmount} {tItem.price} {t.currency} {tItem.method === 'دين' && t.onCreditBadge}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          {t.beforePhoto && <img src={t.beforePhoto} alt="قبل" className="w-12 h-12 object-cover rounded-lg border" />}
-                          {t.afterPhoto && <img src={t.afterPhoto} alt="بعد" className="w-12 h-12 object-cover rounded-lg border" />}
+                          {tItem.beforePhoto && <img src={tItem.beforePhoto} alt={t.beforeBadge} className="w-12 h-12 object-cover rounded-lg border" />}
+                          {tItem.afterPhoto && <img src={tItem.afterPhoto} alt={t.afterBadge} className="w-12 h-12 object-cover rounded-lg border" />}
                           
-                          <button onClick={() => handleStartEditTransaction(t)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Edit3 size={13} /> تعديل</button>
-                          <button onClick={() => setSelectedInvoice({ ...t, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo || { name: currentUser.shopName, address: 'فرع الخدمة', phone: '+90...' } })} className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
+                          <button onClick={() => handleStartEditTransaction(tItem)} className="bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Edit3 size={13} /> {t.edit}</button>
+                          <button onClick={() => setSelectedInvoice({ ...tItem, shopName: currentUser.shopName, shopInfo: currentUser.shopInfo || { name: currentUser.shopName, address: 'فرع الخدمة', phone: '+90...' } })} className="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> {t.printInvoiceBtn}</button>
                         </div>
                       </div>
                     ))
@@ -2006,7 +2111,7 @@ export default function App() {
   const targetShopIds = isAllShops ? ownedShops.map(s => s.id) : [Number(selectedShopId)];
 
   const calculateDaysRemaining = (expiryDateStr) => {
-    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة')) return 999;
+    if (!expiryDateStr || expiryDateStr.includes('مدى الحياة') || expiryDateStr.includes('Ömür') || expiryDateStr.includes('Lifetime')) return 999;
     const diffTime = new Date(expiryDateStr) - new Date();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
@@ -2070,20 +2175,20 @@ export default function App() {
   const shopNetProfit = shopTotalPaid - shopTotalExpenses;
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+    <div className="min-h-screen bg-slate-100 font-sans" dir={t.dir}>
       {renderToastComponent()}
       {renderConfirmModal()}
 
       {!isAllShops && currentShop && daysLeft <= 3 && daysLeft >= 0 && (
         <div className="bg-amber-500 text-slate-900 px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
           <AlertTriangle size={18} />
-          <span>تحذير هام: سينتهي اشتراك هذا الفرع ({currentShop.name}) خلال {daysLeft} أيام! يرجى التواصل مع الإدارة لتجديد الاشتراك.</span>
+          <span>{t.expiringSoonWarning.replace('{name}', currentShop.name).replace('{days}', daysLeft)}</span>
         </div>
       )}
       {!isAllShops && currentShop && daysLeft < 0 && (
         <div className="bg-red-600 text-white px-4 py-2.5 text-center font-black text-xs md:text-sm shadow-md flex items-center justify-center gap-2">
           <AlertTriangle size={18} />
-          <span>تنبيه: انتهت صلاحية اشتراك هذا الفرع! يرجى التجديد الفوري.</span>
+          <span>{t.expiredWarning}</span>
         </div>
       )}
 
@@ -2095,10 +2200,10 @@ export default function App() {
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="font-extrabold text-white text-base tracking-wide">لوحة تحكم المالك: {currentUser.ownerName}</span>
-              <span className="text-[10px] bg-slate-800 text-blue-400 px-2.5 py-0.5 rounded-full font-mono border border-slate-700">الرقم الضريبي: {currentUser.taxNumber}</span>
+              <span className="font-extrabold text-white text-base tracking-wide">{t.ownerDashboard} {currentUser.ownerName}</span>
+              <span className="text-[10px] bg-slate-800 text-blue-400 px-2.5 py-0.5 rounded-full font-mono border border-slate-700">{t.taxNumberLabel} {currentUser.taxNumber}</span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">إدارة المحلات والفروع المتعددة، والديون والأرباح</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t.manageShopsSub}</p>
           </div>
         </div>
 
@@ -2107,49 +2212,51 @@ export default function App() {
             <select 
               value={selectedShopId || ''} 
               onChange={e => setSelectedShopId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold border border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer shadow-inner pr-9"
+              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold border border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer shadow-inner"
             >
               {ownedShops.map(s => <option key={s.id} value={s.id}>🏪 {s.name} {s.status === 'suspended' ? '(معلق/منتهي)' : ''}</option>)}
-              <option value="all">📊 تقرير الجمع الشامل لجميع فروعي ({ownedShops.length} فرع)</option>
+              <option value="all">{t.combinedReportOption.replace('{count}', ownedShops.length)}</option>
             </select>
           </div>
           
+          {renderLanguageSwitcher('dark')}
+
           <button 
             onClick={handleLogout} 
             className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 hover:border-red-500/50 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition shadow-sm"
           >
-            <LogOut size={15} /> تسجيل خروج
+            <LogOut size={15} /> {t.logout}
           </button>
         </div>
       </header>
 
-      {/* شريط التنقل (Pill Tabs) الاحترافي والمحدث بجميع الصفحات */}
+      {/* شريط التنقل الاحترافي */}
       <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
         <button 
           onClick={() => setActiveTab('dashboard')} 
           className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
-          📊 نظرة عامة والجرد
+          {t.overviewTab}
         </button>
         <button 
           onClick={() => setActiveTab('addShop')} 
           className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'addShop' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
-          ➕ إدارة وإضافة الفروع
+          {t.manageBranchesTab}
         </button>
         {!isAllShops && (
           <button 
             onClick={() => setActiveTab('accounting')} 
             className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'accounting' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
           >
-            📑 كشف الحسابات والديون والأرباح
+            {t.accountingTab}
           </button>
         )}
         <button 
           onClick={() => setActiveTab('profile')} 
           className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 cursor-pointer whitespace-nowrap shadow-xs ${activeTab === 'profile' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-blue-500/25' : 'text-slate-600 hover:bg-slate-100'}`}
         >
-          ⚙️ الملف الشخصي والضريبي
+          {t.profileTab}
         </button>
       </nav>
 
@@ -2158,48 +2265,48 @@ export default function App() {
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg flex flex-wrap justify-between items-center gap-4">
               <div>
-                <span className="text-blue-300 text-xs font-bold uppercase tracking-wider">الفرع النشط حالياً</span>
-                <h2 className="text-2xl font-black text-white mt-1">{isAllShops ? `تقرير الجمع الشامل لجميع فروعك (${ownedShops.length} فروع)` : currentShop?.name}</h2>
-                <p className="text-xs text-gray-300 mt-1">📍 {isAllShops ? `عدد الفروع النشطة: ${activeShopsCount} من أصل ${ownedShops.length} فرع` : currentShop?.address}</p>
+                <span className="text-blue-300 text-xs font-bold uppercase tracking-wider">{t.currentActiveBranch}</span>
+                <h2 className="text-2xl font-black text-white mt-1">{isAllShops ? t.combinedAllShopsTitle.replace('{count}', ownedShops.length) : currentShop?.name}</h2>
+                <p className="text-xs text-gray-300 mt-1">📍 {isAllShops ? t.activeBranchesOutOfTotal.replace('{active}', activeShopsCount).replace('{total}', ownedShops.length) : currentShop?.address}</p>
                 {currentShop?.status === 'suspended' && (
-                  <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">هذا الفرع موقوف / انتهى اشتراكه. يرجى التواصل مع الإدارة للتجديد!</span>
+                  <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">{t.shopSuspendedRenewNotice}</span>
                 )}
                 
-                {/* عداد الوقت المتبقي للباقة (أيام وساعات) لصاحب المحل */}
+                {/* عداد الوقت المتبقي للباقة */}
                 {currentShop && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15 shadow-inner">
-                    <span>⏳ عداد باقتك (الحساب الأساسي):</span>
+                    <span>{t.packageCounterLabel}</span>
                     <span className="text-emerald-400 font-mono text-sm">
                       {calculateTimeRemaining(currentShop.subscriptionExpiry)}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="text-left bg-white/10 p-4 rounded-2xl backdrop-blur-md shadow-inner border border-white/10">
-                <span className="text-xs text-blue-200 block font-bold">صافي الأرباح الكلي</span>
-                <span className="text-3xl font-black text-emerald-400">{netProfit} ليرة</span>
+              <div className="text-start bg-white/10 p-4 rounded-2xl backdrop-blur-md shadow-inner border border-white/10">
+                <span className="text-xs text-blue-200 block font-bold">{t.totalNetProfit}</span>
+                <span className="text-3xl font-black text-emerald-400">{netProfit} {t.currency}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100">
-                <span className="text-gray-500 text-sm">صندوق الكاش 💵</span>
-                <h3 className="text-2xl font-black text-emerald-600 mt-1">{totalCashAll} ليرة</h3>
+                <span className="text-gray-500 text-sm">{t.cashBox}</span>
+                <h3 className="text-2xl font-black text-emerald-600 mt-1">{totalCashAll} {t.currency}</h3>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100">
-                <span className="text-gray-500 text-sm">حساب البنك / الشبكة 💳</span>
-                <h3 className="text-2xl font-black text-blue-600 mt-1">{totalBankAll} ليرة</h3>
+                <span className="text-gray-500 text-sm">{t.bankAccount}</span>
+                <h3 className="text-2xl font-black text-blue-600 mt-1">{totalBankAll} {t.currency}</h3>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-amber-100">
-                <span className="text-gray-500 text-sm">إجمالي الديون المعلقة ⚠️</span>
-                <h3 className="text-2xl font-black text-amber-600 mt-1">{totalDebtsAll} ليرة</h3>
+                <span className="text-gray-500 text-sm">{t.totalPendingDebts}</span>
+                <h3 className="text-2xl font-black text-amber-600 mt-1">{totalDebtsAll} {t.currency}</h3>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-red-100">
-                <span className="text-gray-500 text-sm">إجمالي المصاريف 📉</span>
-                <h3 className="text-2xl font-black text-red-600 mt-1">{totalExpensesAll} ليرة</h3>
+                <span className="text-gray-500 text-sm">{t.totalExpensesStat}</span>
+                <h3 className="text-2xl font-black text-red-600 mt-1">{totalExpensesAll} {t.currency}</h3>
               </div>
               <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100">
-                <span className="text-gray-500 text-sm">المركبات المغسولة 🚗</span>
+                <span className="text-gray-500 text-sm">{t.washedVehiclesStat}</span>
                 <h3 className="text-2xl font-black text-purple-600 mt-1">{totalVehiclesAll}</h3>
               </div>
             </div>
@@ -2207,15 +2314,15 @@ export default function App() {
             {!isAllShops && (
               <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                 <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                  <Bell className="text-amber-600" size={18} /> إدارة وتنبيهات عامل {currentShop?.name}
+                  <Bell className="text-amber-600" size={18} /> {t.workerAnnouncementsTitle} {currentShop?.name}
                 </h3>
                 
                 <form onSubmit={handleAddAnnouncement} className="space-y-3 bg-gray-50 p-4 rounded-xl border">
-                  <span className="text-xs font-bold text-gray-700 block">إرسال تنبيه جديد للعامل:</span>
+                  <span className="text-xs font-bold text-gray-700 block">{t.sendNewWorkerAlert}</span>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input 
                       type="text" 
-                      placeholder="عنوان التنبيه..." 
+                      placeholder={t.alertTitlePlaceholder} 
                       value={ownerNoticeTitle} 
                       onChange={e => setOwnerNoticeTitle(e.target.value)} 
                       onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان التنبيه')}
@@ -2232,7 +2339,7 @@ export default function App() {
                     />
                   </div>
                   <textarea 
-                    placeholder="نص التنبيه والملاحظة الموجهة للعامل..." 
+                    placeholder={t.alertTextPlaceholder} 
                     value={ownerNoticeText} 
                     onChange={e => setOwnerNoticeText(e.target.value)} 
                     onInvalid={e => e.target.setCustomValidity('يرجى كتابة نص التنبيه')}
@@ -2242,15 +2349,15 @@ export default function App() {
                   />
                   <div className="flex justify-end">
                     <button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-bold text-xs cursor-pointer shadow-sm">
-                      نشر التنبيه 📢
+                      {t.publishAlertBtn}
                     </button>
                   </div>
                 </form>
 
                 <div className="space-y-2 pt-2">
-                  <h4 className="font-bold text-xs text-gray-700">التنبيهات الفعالة المرسلة لهذا الفرع (يمكنك حذفها):</h4>
+                  <h4 className="font-bold text-xs text-gray-700">{t.activeAlertsForShop}</h4>
                   {shopAnnouncementsList.length === 0 ? (
-                    <p className="text-xs text-gray-400">لا توجد تنبيهات مرسلة لهذا الفرع حالياً.</p>
+                    <p className="text-xs text-gray-400">{t.noActiveAlerts}</p>
                   ) : (
                     <div className="space-y-2">
                       {shopAnnouncementsList.map(ann => (
@@ -2258,13 +2365,13 @@ export default function App() {
                           <div>
                             <span className="font-bold text-gray-900">{ann.title}</span>
                             <p className="text-xs text-gray-700 mt-0.5">{ann.text}</p>
-                            <span className="text-[10px] text-gray-400 block mt-1">تاريخ النشر: {ann.date}</span>
+                            <span className="text-[10px] text-gray-400 block mt-1">{t.publishDate} {ann.date}</span>
                           </div>
                           <button 
                             onClick={() => handleDeleteAnnouncement(selectedShopId, ann.id)}
                             className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-red-200 shadow-xs"
                           >
-                            <Trash2 size={13} /> حذف
+                            <Trash2 size={13} /> {t.delete}
                           </button>
                         </div>
                       ))}
@@ -2277,27 +2384,27 @@ export default function App() {
             {isAllShops && (
               <div className="bg-white p-6 rounded-3xl shadow-sm border space-y-4">
                 <div className="flex justify-between items-center border-b pb-3">
-                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">📑 كشف الديون المجمع لجميع فروعك</h3>
+                  <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">{t.combinedDebtsSheetTitle}</h3>
                   <button 
                     onClick={handleRefreshData} 
                     disabled={isRefreshing}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
                   >
                     <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                    {isRefreshing ? 'جاري التحديث...' : 'تحديث القوائم'}
+                    {isRefreshing ? t.refreshing : t.updateLists}
                   </button>
                 </div>
                 {allShopsDebtsList.length === 0 ? (
-                  <p className="text-xs text-gray-400">لا توجد ديون مسجلة في أي من فروعك حالياً.</p>
+                  <p className="text-xs text-gray-400">{t.noDebtsAllShops}</p>
                 ) : (
                   <div className="space-y-2">
                     {allShopsDebtsList.map(d => (
                       <div key={d.id} className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center text-sm">
                         <div>
-                          <span className="font-bold text-gray-900">🏪 {d.shopName} | 👤 الزبون: {d.debtorName}</span>
-                          <p className="text-xs text-gray-600">📞 الهاتف: <span dir="ltr">{d.phone}</span> | الخدمة: {d.service} (التاريخ: {d.date})</p>
+                          <span className="font-bold text-gray-900">🏪 {d.shopName} | {t.customerLabel} {d.debtorName}</span>
+                          <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {d.service} ({t.dateLabel} {d.date})</p>
                         </div>
-                        <span className="font-black text-red-600 text-base">{d.amount} ليرة</span>
+                        <span className="font-black text-red-600 text-base">{d.amount} {t.currency}</span>
                       </div>
                     ))}
                   </div>
@@ -2308,29 +2415,31 @@ export default function App() {
             {!isAllShops && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> تسجيل مصروف لـ {currentShop?.name}</h3>
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2"><Tag className="text-red-600" size={18} /> {t.recordExpenseFor} {currentShop?.name}</h3>
                   <form onSubmit={handleAddExpense} className="space-y-3">
                     <select value={expCategory} onChange={e => setExpCategory(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
-                      <option>غذاء وضيافة</option><option>مواد تنظيف وصيانة</option><option>فواتير خدمات</option><option>مصاريف أخرى</option>
+                      {t.expCategories.map((c, i) => (
+                        <option key={i} value={c}>{c}</option>
+                      ))}
                     </select>
-                    <input type="text" placeholder="عنوان المصروف" value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                    <input type="number" placeholder="المبلغ" value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                    <textarea placeholder="ملاحظات..." value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
-                    <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">خصم وتسجيل المصروف 📉</button>
+                    <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <textarea placeholder={t.expNotesPlaceholder} value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
+                    <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">{t.deductAndSaveExp}</button>
                   </form>
                 </div>
 
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border space-y-4">
                   <div className="flex justify-between items-center border-b pb-3 flex-wrap gap-3">
                     <h3 className="font-bold text-gray-900">
-                      {selectedDateFilter ? `حركة مركبات تاريخ: ${selectedDateFilter}` : 'سجلات كافة التواريخ'}
-                      <span className="text-xs text-blue-600 font-semibold mr-2">({filteredOwnerTx.length} نتيجة)</span>
+                      {selectedDateFilter ? `${t.vehicleMovementDate} ${selectedDateFilter}` : t.oldRecords}
+                      <span className="text-xs text-blue-600 font-semibold mx-2">({filteredOwnerTx.length} {t.resultsCount})</span>
                     </h3>
 
                     <div className="flex items-center gap-2 flex-wrap">
                       <input 
                         type="text" 
-                        placeholder="بحث برقم اللوحة 🔍" 
+                        placeholder={t.searchPlatePlaceholder} 
                         value={plateSearchQuery} 
                         onChange={e => setPlateSearchQuery(e.target.value)}
                         className="px-3 py-1.5 border rounded-xl text-xs bg-white text-gray-900 font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -2347,14 +2456,14 @@ export default function App() {
                         onClick={() => setSelectedDateFilter(new Date().toISOString().slice(0, 10))}
                         className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
                       >
-                        اليوم 📅
+                        {t.today}
                       </button>
 
                       <button 
                         onClick={() => setSelectedDateFilter('')}
                         className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
                       >
-                        كل السجلات 📂
+                        {t.allRecords}
                       </button>
 
                       <button 
@@ -2363,28 +2472,28 @@ export default function App() {
                         className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition border"
                       >
                         <RefreshCw size={14} className={isRefreshing ? "animate-spin text-blue-600" : ""} /> 
-                        {isRefreshing ? 'جاري التحديث...' : 'تحديث'}
+                        {isRefreshing ? t.refreshing : t.refreshData}
                       </button>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {filteredOwnerTx.length === 0 ? (
-                      <p className="text-xs text-gray-400 py-4 text-center">لا توجد سيارات مسجلة تطابق البحث أو التاريخ المحدد.</p>
+                      <p className="text-xs text-gray-400 py-4 text-center">{t.noVehiclesMatched}</p>
                     ) : (
-                      filteredOwnerTx.map(t => (
-                        <div key={t.id} className="p-3 bg-gray-50 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border">
+                      filteredOwnerTx.map(tItem => (
+                        <div key={tItem.id} className="p-3 bg-gray-50 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="font-bold block text-gray-900">🏪 {currentShop.name}</span>
-                              <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono font-bold">التاريخ: {t.date || 'غير محدد'}</span>
+                              <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono font-bold">{t.dateLabel} {tItem.date || t.unspecified}</span>
                             </div>
-                            <span className="font-bold text-blue-600">[{t.vehicleCategory}] {t.carModel} | لوحة: {t.plate}</span> - {t.service}
-                            <span className="block text-xs text-gray-500">المبلغ المسجل: {t.price} ليرة | الحالة: {t.method === 'دين' ? 'دين ⚠️' : t.method} {t.notes && `| ملاحظة: ${t.notes}`}</span>
+                            <span className="font-bold text-blue-600">[{tItem.vehicleCategory}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span> - {tItem.service}
+                            <span className="block text-xs text-gray-500">{t.registeredAmount} {tItem.price} {t.currency} | {t.statusLabel} {tItem.method === 'دين' ? t.debt : tItem.method} {tItem.notes && `| ${t.notesOptional}: ${tItem.notes}`}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => handleDeleteTransactionByOwner(selectedShopId, t.id)} className="bg-red-100 text-red-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Trash2 size={13} /> حذف الإدارة</button>
-                            <button onClick={() => setSelectedInvoice({ ...t, shopName: currentShop.name, shopInfo: currentShop })} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> طباعة الفاتورة</button>
+                            <button onClick={() => handleDeleteTransactionByOwner(selectedShopId, tItem.id)} className="bg-red-100 text-red-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Trash2 size={13} /> {t.adminDelete}</button>
+                            <button onClick={() => setSelectedInvoice({ ...tItem, shopName: currentShop.name, shopInfo: currentShop })} className="bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1 hover:bg-black"><Printer size={14} /> {t.printInvoiceBtn}</button>
                           </div>
                         </div>
                       ))
@@ -2398,7 +2507,6 @@ export default function App() {
 
         {activeTab === 'addShop' && (
           <div className="space-y-8 max-w-4xl mx-auto py-2">
-            
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 left-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
               
@@ -2409,10 +2517,10 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-slate-900">
-                      {editingShopId ? 'تعديل بيانات فرع المغسلة ✏️' : 'إضافة فرع جديد لمجموعتك 🏪'}
+                      {editingShopId ? t.editShopTitle : t.addNewShopTitle}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {editingShopId ? 'قم بتحديث معلومات الفرع وعامل الفرع أدناه' : 'تُحدد مدة الصلاحية وعدد الفروع المسموحة بناءً على باقة الحساب الأساسي'}
+                      {editingShopId ? t.editShopSub : t.addNewShopSub}
                     </p>
                   </div>
                 </div>
@@ -2422,17 +2530,17 @@ export default function App() {
                     onClick={() => { setEditingShopId(null); setNewShopName(''); setNewWorkerEmail(''); setNewWorkerPass(''); setNewShopPhone(''); setNewShopAddress(''); }}
                     className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl font-bold transition"
                   >
-                    إلغاء التعديل ✕
+                    {t.cancelEdit}
                   </button>
                 )}
               </div>
 
               <form onSubmit={handleOwnerSaveShop} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">اسم الفرع الجديد / المغسلة *</label>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.newShopNameLabel}</label>
                   <input 
                     type="text" 
-                    placeholder="مثال: مغسلة النسر - فرع الميناء" 
+                    placeholder={t.shopNamePlaceholder} 
                     value={newShopName} 
                     onChange={e => setNewShopName(e.target.value)} 
                     onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع')}
@@ -2444,7 +2552,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">البريد الإلكتروني لعامل الفرع (Gmail) *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.workerEmailLabel}</label>
                     <input 
                       type="email" 
                       placeholder="worker@gmail.com" 
@@ -2457,7 +2565,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">كلمة سر دخول عامل الفرع *</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.workerPassLabel}</label>
                     <input 
                       type="password" 
                       placeholder="••••••••" 
@@ -2473,7 +2581,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">رقم هاتف الفرع (أقصى 11 رقماً)</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.shopPhoneLabel}</label>
                     <input 
                       type="text" 
                       dir="ltr"
@@ -2481,14 +2589,14 @@ export default function App() {
                       placeholder="05XXXXXXXXX" 
                       value={newShopPhone} 
                       onChange={e => setNewShopPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} 
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold text-right" 
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold text-start" 
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1.5">عنوان الفرع (المنطقة والشارع)</label>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5">{t.shopAddressLabel}</label>
                     <input 
                       type="text" 
-                      placeholder="إسكندرون، شارع العصري..." 
+                      placeholder={t.shopAddressPlaceholder} 
                       value={newShopAddress} 
                       onChange={e => setNewShopAddress(e.target.value)} 
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
@@ -2500,7 +2608,7 @@ export default function App() {
                   type="submit" 
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 rounded-2xl font-bold text-sm cursor-pointer shadow-lg transition transform active:scale-95"
                 >
-                  {editingShopId ? 'حفظ التعديلات وتحديث الفرع ✏️' : 'إضافة الفرع الجديد لفروعي 🚀'}
+                  {editingShopId ? t.saveShopEditBtn : t.addNewShopBtn}
                 </button>
               </form>
             </div>
@@ -2508,10 +2616,10 @@ export default function App() {
             <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 space-y-5">
               <div className="flex justify-between items-center border-b pb-4">
                 <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
-                  <span>🏢</span> فروعك المسجلة حالياً ({ownedShops.length}):
+                  <span>🏢</span> {t.registeredBranchesTitle} ({ownedShops.length}):
                 </h3>
                 <span className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">
-                  إدارة شاملة
+                  {t.comprehensiveManageBadge}
                 </span>
               </div>
 
@@ -2522,17 +2630,17 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <h4 className="font-black text-base text-slate-900">🏪 {s.name}</h4>
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${s.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {s.status === 'active' ? 'نشط ✨' : 'موقوف ⚠️'}
+                          {s.status === 'active' ? t.activeBadge : t.suspendedBadge2}
                         </span>
                         <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold">
-                          الباقة: {s.subscriptionType}
+                          {t.packageLabel} {s.subscriptionType}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 flex items-center gap-1.5">
-                        <MapPin size={13} className="text-red-500" /> العنوان: {s.address} | <Phone size={13} className="text-blue-500" /> الهاتف: <span dir="ltr">{s.phone}</span>
+                        <MapPin size={13} className="text-red-500" /> {t.branchAddress}: {s.address} | <Phone size={13} className="text-blue-500" /> {t.phoneLabel} <span dir="ltr">{s.phone}</span>
                       </p>
                       <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                        <Mail size={13} className="text-purple-500" /> إيميل العامل: <strong className="text-slate-800 font-mono">{s.workerEmail}</strong>
+                        <Mail size={13} className="text-purple-500" /> {t.workerEmailDisplay} <strong className="text-slate-800 font-mono">{s.workerEmail}</strong>
                       </p>
                     </div>
 
@@ -2541,20 +2649,19 @@ export default function App() {
                         onClick={() => handleStartEditShop(s)}
                         className="flex-1 md:flex-initial bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
                       >
-                        <Edit3 size={14} /> تعديل
+                        <Edit3 size={14} /> {t.edit}
                       </button>
                       <button 
                         onClick={() => handleDeleteShopByOwner(s.id)}
                         className="flex-1 md:flex-initial bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 transition"
                       >
-                        <Trash2 size={14} /> حذف
+                        <Trash2 size={14} /> {t.delete}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
           </div>
         )}
 
@@ -2562,56 +2669,56 @@ export default function App() {
           <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-4xl mx-auto space-y-6" id="accountStatement">
             <div className="text-center border-b pb-4 space-y-1">
               <h2 className="text-2xl font-black text-gray-900">🏪 {currentShop?.name}</h2>
-              <p className="text-xs text-gray-600">كشف الحسابات المالي والتقارير والديون | {currentShop?.address} | هاتف: <span dir="ltr">{currentShop?.phone}</span></p>
+              <p className="text-xs text-gray-600">{t.financialStatementTitle} | {currentShop?.address} | {t.phoneLabel} <span dir="ltr">{currentShop?.phone}</span></p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
               <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200">
-                <span className="text-xs text-blue-900 block font-bold">إجمالي الخدمات</span>
-                <span className="text-lg font-black text-blue-700">{shopTotalServices} ليرة</span>
+                <span className="text-xs text-blue-900 block font-bold">{t.totalServices}</span>
+                <span className="text-lg font-black text-blue-700">{shopTotalServices} {t.currency}</span>
               </div>
               <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
-                <span className="text-xs text-emerald-900 block font-bold">المقبوض النقدي والبنكي</span>
-                <span className="text-lg font-black text-emerald-700">{shopTotalPaid} ليرة</span>
+                <span className="text-xs text-emerald-900 block font-bold">{t.totalCollected}</span>
+                <span className="text-lg font-black text-emerald-700">{shopTotalPaid} {t.currency}</span>
               </div>
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200">
-                <span className="text-xs text-amber-900 block font-bold">الديون المعلقة</span>
-                <span className="text-lg font-black text-amber-700">{shopTotalDebtAmount} ليرة</span>
+                <span className="text-xs text-amber-900 block font-bold">{t.totalPendingDebts}</span>
+                <span className="text-lg font-black text-amber-700">{shopTotalDebtAmount} {t.currency}</span>
               </div>
               <div className="bg-red-50 p-4 rounded-2xl border border-red-200">
-                <span className="text-xs text-red-900 block font-bold">إجمالي المصاريف</span>
-                <span className="text-lg font-black text-red-700">{shopTotalExpenses} ليرة</span>
+                <span className="text-xs text-red-900 block font-bold">{t.totalExpensesStat}</span>
+                <span className="text-lg font-black text-red-700">{shopTotalExpenses} {t.currency}</span>
               </div>
               <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200 md:col-span-1 col-span-2">
-                <span className="text-xs text-purple-900 block font-bold">صافي الأرباح</span>
-                <span className="text-lg font-black text-purple-700">{shopNetProfit} ليرة</span>
+                <span className="text-xs text-purple-900 block font-bold">{t.netProfitLabel}</span>
+                <span className="text-lg font-black text-purple-700">{shopNetProfit} {t.currency}</span>
               </div>
             </div>
 
             <div className="space-y-3 bg-amber-50 p-5 rounded-2xl border border-amber-200">
               <div className="flex justify-between items-center">
-                <h4 className="font-bold text-amber-900 text-base flex items-center gap-2">⚠️ سجل الديون على الزبائن:</h4>
+                <h4 className="font-bold text-amber-900 text-base flex items-center gap-2">{t.customerDebtsRecord}</h4>
                 <button 
                   onClick={handleRefreshData} 
                   disabled={isRefreshing}
                   className="bg-white hover:bg-amber-100 text-amber-800 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition border border-amber-300"
                 >
-                  <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} /> تحديث القائمة
+                  <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} /> {t.updateLists}
                 </button>
               </div>
 
               {currentShopDebts.length === 0 ? (
-                <p className="text-xs text-gray-600">لا توجد ديون مسجلة على زبائن هذا الفرع.</p>
+                <p className="text-xs text-gray-600">{t.noDebtsForCurrentShop}</p>
               ) : (
                 <div className="space-y-2">
                   {currentShopDebts.map(d => (
                     <div key={d.id} className="p-3 bg-white rounded-xl shadow-xs flex justify-between items-center text-sm border border-amber-100">
                       <div>
-                        <span className="font-bold text-gray-900">👤 الزبون: {d.debtorName}</span>
-                        <p className="text-xs text-gray-700">📞 الهاتف: <span dir="ltr">{d.phone}</span> | الخدمة: {d.service}</p>
-                        <span className="text-[10px] text-gray-500">التاريخ: {d.date} (بواسطة: {d.addedBy})</span>
+                        <span className="font-bold text-gray-900">{t.customerLabel} {d.debtorName}</span>
+                        <p className="text-xs text-gray-700">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {d.service}</p>
+                        <span className="text-[10px] text-gray-500">{t.dateLabel} {d.date} ({t.addedBy} {d.addedBy})</span>
                       </div>
-                      <span className="text-base font-black text-red-600">{d.amount} ليرة</span>
+                      <span className="text-base font-black text-red-600">{d.amount} {t.currency}</span>
                     </div>
                   ))}
                 </div>
@@ -2619,38 +2726,38 @@ export default function App() {
             </div>
 
             <div className="space-y-4">
-              <h4 className="font-bold text-gray-900 border-b pb-2">تفاصيل المصاريف المسجلة:</h4>
-              {currentShopExpenses.length === 0 ? <p className="text-xs text-gray-500">لا توجد مصاريف مسجلة لهذا الفرع.</p> : currentShopExpenses.map(e => (
+              <h4 className="font-bold text-gray-900 border-b pb-2">{t.expensesDetails}</h4>
+              {currentShopExpenses.length === 0 ? <p className="text-xs text-gray-500">{t.noExpensesForShop}</p> : currentShopExpenses.map(e => (
                 <div key={e.id} className="flex justify-between items-center text-sm p-2 bg-gray-50 rounded-lg">
                   <span className="text-gray-900 font-medium">{e.title} ({e.category})</span>
-                  <span className="text-red-600 font-bold">-{e.amount} ليرة</span>
+                  <span className="text-red-600 font-bold">-{e.amount} {t.currency}</span>
                 </div>
               ))}
             </div>
 
             <div className="pt-4 flex justify-end">
-              <button onClick={() => handlePrintInvoice({ shopName: currentShop.name, shopInfo: currentShop, plate: 'كشف حساب مالي شامل', type: 'جميع العمليات', service: 'تقرير الحسابات والديون والأرباح', startTime: '-', endTime: '-', method: 'تقرير', price: shopNetProfit })} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm cursor-pointer flex items-center gap-2 hover:bg-black"><Printer size={16} /> طباعة كشف الحساب المالي (PDF)</button>
+              <button onClick={() => handlePrintInvoice({ shopName: currentShop.name, shopInfo: currentShop, plate: 'كشف حساب مالي شامل', type: 'جميع العمليات', service: 'تقرير الحسابات والديون والأرباح', startTime: '-', endTime: '-', method: 'تقرير', price: shopNetProfit })} className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm cursor-pointer flex items-center gap-2 hover:bg-black"><Printer size={16} /> {t.printFinancialPdf}</button>
             </div>
           </div>
         )}
 
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-xl mx-auto space-y-4">
-            <h3 className="text-xl font-bold text-gray-900">الملف الشخصي والبيانات الضريبية ⚙️</h3>
+            <h3 className="text-xl font-bold text-gray-900">{t.profileAndTaxTitle}</h3>
             <form onSubmit={e => { e.preventDefault(); showToast('تم تحديث البيانات بنجاح!', 'success'); }} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">اسم صاحب المحل / المؤسسة</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.ownerOrgName}</label>
                 <input type="text" defaultValue={currentUser.ownerName} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">البريد الإلكتروني (Gmail)</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.email}</label>
                 <input type="email" defaultValue={currentUser.email} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" disabled />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">الرقم الضريبي / المعرف الضريبي</label>
-                <input type="text" defaultValue={currentUser.taxNumber} onChange={e => currentUser.taxNumber = e.target.value} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" placeholder="أدخل الرقم الضريبي للمؤسسة" />
+                <label className="block text-xs font-bold text-gray-700 mb-1">{t.taxNumberOrg}</label>
+                <input type="text" defaultValue={currentUser.taxNumber} onChange={e => currentUser.taxNumber = e.target.value} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" placeholder={t.taxNumberPlaceholder} />
               </div>
-              <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm cursor-pointer">حفظ التعديلات الضريبية والشخصية</button>
+              <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold text-sm cursor-pointer">{t.saveProfileBtn}</button>
             </form>
           </div>
         )}
@@ -2658,37 +2765,37 @@ export default function App() {
 
       {selectedInvoice && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full space-y-6 relative" dir="rtl">
-            <div className="space-y-4 text-right">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-lg w-full space-y-6 relative" dir={t.dir}>
+            <div className="space-y-4 text-start">
               <div className="text-center border-b pb-3">
                 <h2 className="text-xl font-black text-gray-900">🏪 {selectedInvoice.shopName}</h2>
-                <p className="text-xs text-gray-600">{selectedInvoice.shopInfo?.address || 'إسكندرون'} | هاتف: <span dir="ltr">{selectedInvoice.shopInfo?.phone || '+90...'}</span></p>
-                <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">فاتورة غسيل مركبات رسمية</span>
+                <p className="text-xs text-gray-600">{selectedInvoice.shopInfo?.address || 'İskenderun'} | {t.phoneLabel} <span dir="ltr">{selectedInvoice.shopInfo?.phone || '+90...'}</span></p>
+                <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">{t.officialInvoiceBadge}</span>
               </div>
               <div className="space-y-2 text-sm text-gray-800 font-medium">
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">نوع المركبة:</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : 'موتور'})</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">رقم اللوحة:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">الخدمة:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">طريقة الدفع:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? 'دين (على الذمة)' : selectedInvoice.method}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.vehicleCatLabel}</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : t.motorcycle})</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.plateNumber}:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.serviceNameLabel}:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.paymentMethod}:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? t.onCreditBadge : selectedInvoice.method}</span></div>
                 
                 {selectedInvoice.notes && (
-                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">ملاحظات العامل:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
+                  <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.notesOptional}:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
                 )}
 
                 {(selectedInvoice.beforePhoto || selectedInvoice.afterPhoto) && (
                   <div className="py-2 border-b">
-                    <span className="text-xs text-gray-600 block mb-2 font-bold">توثيق الصور:</span>
+                    <span className="text-xs text-gray-600 block mb-2 font-bold">{t.photoDocumentation}:</span>
                     <div className="flex justify-around gap-2">
                       {selectedInvoice.beforePhoto && (
                         <div className="text-center w-1/2">
-                          <span className="text-[10px] text-gray-500 block">قبل الغسيل</span>
-                          <img src={selectedInvoice.beforePhoto} alt="قبل" className="w-full h-20 object-cover rounded-lg border mt-1" />
+                          <span className="text-[10px] text-gray-500 block">{t.beforeBadge}</span>
+                          <img src={selectedInvoice.beforePhoto} alt={t.beforeBadge} className="w-full h-20 object-cover rounded-lg border mt-1" />
                         </div>
                       )}
                       {selectedInvoice.afterPhoto && (
                         <div className="text-center w-1/2">
-                          <span className="text-[10px] text-gray-500 block">بعد الغسيل</span>
-                          <img src={selectedInvoice.afterPhoto} alt="بعد" className="w-full h-20 object-cover rounded-lg border mt-1" />
+                          <span className="text-[10px] text-gray-500 block">{t.afterBadge}</span>
+                          <img src={selectedInvoice.afterPhoto} alt={t.afterBadge} className="w-full h-20 object-cover rounded-lg border mt-1" />
                         </div>
                       )}
                     </div>
@@ -2696,17 +2803,17 @@ export default function App() {
                 )}
 
                 <div className="flex justify-between text-base font-black bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-                  <span className="text-emerald-900">المبلغ الإجمالي:</span><span className="text-emerald-700">{selectedInvoice.price} ليرة</span>
+                  <span className="text-emerald-900">{t.totalInvoiceAmount}</span><span className="text-emerald-700">{selectedInvoice.price} {t.currency}</span>
                 </div>
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
               <button onClick={() => handlePrintInvoice(selectedInvoice)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer text-sm shadow-md">
-                <Printer size={18} /> طباعة الفاتورة / PDF
+                <Printer size={18} /> {t.printPdfBtn}
               </button>
               <button onClick={() => setSelectedInvoice(null)} className="px-5 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-bold cursor-pointer text-sm">
-                إغلاق
+                {t.closeBtn}
               </button>
             </div>
           </div>
