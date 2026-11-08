@@ -11,7 +11,6 @@ import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } fro
 import { translations } from './translations';
 
 export default function App() {
-  // 🌟 نظام اللغات المتكامل مع الحفظ في الـ LocalStorage
   const [lang, setLang] = useState(() => {
     try {
       return localStorage.getItem('carWash_lang') || 'ar';
@@ -71,14 +70,14 @@ export default function App() {
   const [shops, setShops] = useState([
     { 
       id: 1, 
-      name: 'مغسلة النسر - الفرع الرئيسي', 
-      owner: 'أحمد محمد', 
+      name: t.defaultMainBranch, 
+      owner: t.defaultOwnerName, 
       ownerEmail: 'ahmed@gmail.com',
       taxNumber: '1234567890',
       workerEmail: 'worker1@gmail.com',
       workerPass: '123456',
       phone: '+90 531 234 5678', 
-      address: 'إسكندرون، شارع أتاتورك', 
+      address: 'İskenderun, Atatürk Cad.', 
       code: 'NESR-1', 
       status: 'active',
       subscriptionType: 'monthly',
@@ -89,9 +88,9 @@ export default function App() {
   ]);
 
   const [pricingPlans, setPricingPlans] = useState([
-    { id: 1, name: 'الباقة الشهرية (محل واحد)', type: 'monthly', price: 500, currency: 'ليرة', maxShops: 1 },
-    { id: 2, name: 'الباقة السنوية (حتى 5 فروع)', type: 'yearly', price: 5000, currency: 'ليرة', maxShops: 5 },
-    { id: 3, name: 'اشتراك مدى الحياة', type: 'lifetime', price: 15000, currency: 'ليرة', maxShops: 10 }
+    { id: 1, name: t.defaultMonthlyPlan, type: 'monthly', price: 500, currency: t.currency, maxShops: 1 },
+    { id: 2, name: t.defaultYearlyPlan, type: 'yearly', price: 5000, currency: t.currency, maxShops: 5 },
+    { id: 3, name: t.defaultLifetimePlan, type: 'lifetime', price: 15000, currency: t.currency, maxShops: 10 }
   ]);
 
   const [newPlanName, setNewPlanName] = useState('');
@@ -129,6 +128,29 @@ export default function App() {
     if (!phone) return true;
     const cleanPhone = phone.replace(/\D/g, '');
     return cleanPhone.length <= 11 && cleanPhone.length >= 10;
+  };
+
+  // دوال مساعدة لترجمة البيانات القادمة من قاعدة البيانات ديناميكياً
+  const translateVehicleCategory = (cat) => {
+    if (cat === 'سيارة' || cat === 'Otomobil' || cat === 'Car') return t.car;
+    if (cat === 'موتور' || cat === 'Motosiklet' || cat === 'Motorcycle') return t.motorcycle;
+    return cat || t.car;
+  };
+
+  const translatePaymentMethod = (method) => {
+    if (method === 'كاش' || method === 'Nakit' || method === 'Cash') return t.cash;
+    if (method === 'بنك' || method === 'Banka' || method === 'Bank') return t.bank;
+    if (method === 'دين' || method === 'Veresiye' || method === 'Debt') return t.debt;
+    return method;
+  };
+
+  const translateServiceType = (srv) => {
+    if (!srv) return '';
+    if (srv.includes('خارجي فقط') || srv.includes('Sadece Dış') || srv.includes('Exterior Wash Only')) return t.servicesList[0];
+    if (srv.includes('خارجي وداخلي') || srv.includes('İç ve Dış') || srv.includes('Interior & Exterior')) return t.servicesList[1];
+    if (srv.includes('تلميع') || srv.includes('Detaylı') || srv.includes('Full Wash')) return t.servicesList[2];
+    if (srv.includes('موتور') || srv.includes('Motor')) return t.servicesList[3];
+    return srv;
   };
 
   useEffect(() => {
@@ -287,7 +309,7 @@ export default function App() {
 
   const handleFirebaseLogin = async (e) => {
     e.preventDefault();
-    if (!inputEmail || !inputPassword) return showToast(t.loginError, 'error');
+    if (!inputEmail || !inputPassword) return showToast(t.enterEmailPass, 'error');
 
     try {
       if (inputEmail.toLowerCase() === "munir@gmail.com") {
@@ -307,7 +329,7 @@ export default function App() {
           email: inputEmail,
           role: 'owner',
           ownerName: ownedShops[0].owner,
-          taxNumber: ownedShops[0].taxNumber || 'غير مسجل',
+          taxNumber: ownedShops[0].taxNumber || t.unregistered,
           ownedShops: ownedShops
         };
         setCurrentUser(userData);
@@ -357,12 +379,12 @@ export default function App() {
   const handleProgrammerAddClient = async (e) => {
     e.preventDefault();
     if (!newClientName || !newClientEmail || !newClientShopName || !newClientWorkerEmail || !newClientWorkerPass) {
-      showToast(t.loginError, 'error');
+      showToast(t.fillClientFieldsError, 'error');
       return;
     }
 
     if (newClientPhone && !validateTurkishPhone(newClientPhone)) {
-      showToast('رقم الهاتف المدخل غير صحيح! يرجى ألا يتجاوز 11 رقماً.', 'error');
+      showToast(t.invalidPhoneError, 'error');
       return;
     }
 
@@ -376,11 +398,11 @@ export default function App() {
         name: newClientShopName,
         owner: newClientName,
         ownerEmail: newClientEmail,
-        taxNumber: newClientTax || 'غير مسجل',
+        taxNumber: newClientTax || t.unregistered,
         workerEmail: newClientWorkerEmail,
         workerPass: newClientWorkerPass,
         phone: newClientPhone || '+90 ...',
-        address: newClientAddress || 'العنوان لم يحدد',
+        address: newClientAddress || t.unspecified,
         code: 'SHOP-' + Math.floor(100 + Math.random() * 900),
         status: 'active',
         subscriptionType: 'trial',
@@ -400,17 +422,17 @@ export default function App() {
       setNewClientWorkerPass('');
       setNewClientAddress('');
 
-      showToast('تم إضافة العميل الجديد بنجاح، ومَنحه فترة تجريبية مجانية لمدة 7 أيام! 🌟⏳', 'success');
+      showToast(t.clientAddedSuccess, 'success');
       setProgrammerTab('clients');
     } catch (error) {
-      showToast('حدث خطأ أثناء إضافة العميل: ' + error.message, 'error');
+      showToast(t.clientAddError + error.message, 'error');
     }
   };
 
   const handleApplyDirectDiscountToClient = async (e) => {
     e.preventDefault();
     if (!targetClientEmailForDiscount || directDiscountValue === '') {
-      showToast('اختر العميل وأدخل نسبة الخصم', 'error');
+      showToast(t.selectClientAndDiscount, 'error');
       return;
     }
 
@@ -421,11 +443,11 @@ export default function App() {
           discountPercent: Number(directDiscountValue)
         });
       }
-      showToast(`تم تطبيق خصم بنسبة (${directDiscountValue}%) على جميع فروع العميل بنجاح! 🏷️✨`, 'success');
+      showToast(t.discountAppliedSuccess.replace('{val}', directDiscountValue), 'success');
       setDirectDiscountValue('');
       setTargetClientEmailForDiscount('');
     } catch (e) {
-      showToast('حدث خطأ أثناء تطبيق الخصم.', 'error');
+      showToast(t.discountError, 'error');
     }
   };
 
@@ -434,7 +456,7 @@ export default function App() {
     if (!editingClientData) return;
 
     if (editingClientData.phone && !validateTurkishPhone(editingClientData.phone)) {
-      showToast('رقم الهاتف غير صالح! الحد الأقصى 11 رقماً.', 'error');
+      showToast(t.invalidPhoneError, 'error');
       return;
     }
 
@@ -448,16 +470,16 @@ export default function App() {
         });
       }
       setEditingClientData(null);
-      showToast('تم تحديث بيانات العميل والبيانات الضريبية بنجاح! ✅', 'success');
+      showToast(t.clientUpdatedSuccess, 'success');
     } catch (e) {
-      showToast('حدث خطأ أثناء التحديث.', 'error');
+      showToast(t.updateError, 'error');
     }
   };
 
   const handleSuspendClientForMonths = (clientEmail) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من تعليق حساب هذا العميل وجميع فروعه (أرشفة لمدة 3 أشهر)؟',
+      message: t.confirmSuspendClient,
       onConfirm: async () => {
         try {
           const threeMonthsLater = new Date();
@@ -472,9 +494,9 @@ export default function App() {
             });
           }
           setSelectedClientEmail(null);
-          showToast('تم تعليق الحساب وأرشفته بنجاح لمدة 3 أشهر.', 'success');
+          showToast(t.clientSuspendedSuccess, 'success');
         } catch (e) {
-          showToast('حدث خطأ أثناء تعليق الحساب.', 'error');
+          showToast(t.suspendError, 'error');
         }
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
@@ -509,29 +531,29 @@ export default function App() {
           gracePeriodExpiry: null
         });
       }
-      showToast(`تم تجديد اشتراك العميل (${clientEmail}) بنجاح لجميع فروعه (${clientShops.length} فروع)! 🌟✨`, 'success');
+      showToast(t.subRenewedSuccess.replace('{email}', clientEmail).replace('{count}', clientShops.length), 'success');
     } catch (e) {
-      showToast('حدث خطأ أثناء تجديد الاشتراك.', 'error');
+      showToast(t.renewError, 'error');
     }
   };
 
   const handleRemoveClientSubscription = (clientEmail) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من إلغاء وحذف اشتراك هذا العميل؟ سيتم إيقاف فروعه مؤقتاً.',
+      message: t.confirmRemoveSub,
       onConfirm: async () => {
         try {
           const clientShops = shops.filter(s => s.ownerEmail.toLowerCase() === clientEmail.toLowerCase());
           for (const shop of clientShops) {
             await updateDoc(doc(db, "platformShops", String(shop.id)), {
               subscriptionType: 'expired',
-              subscriptionExpiry: 'منتهي ❌',
+              subscriptionExpiry: t.expiredDuration,
               status: 'suspended'
             });
           }
-          showToast('تم إلغاء وحذف اشتراك العميل بنجاح.', 'success');
+          showToast(t.subRemovedSuccess, 'success');
         } catch (e) {
-          showToast('حدث خطأ أثناء إلغاء الاشتراك.', 'error');
+          showToast(t.updateError, 'error');
         }
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
@@ -541,16 +563,16 @@ export default function App() {
   const handleSuspendShop = (shopId) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من تعليق هذا الفرع وإيقاف اشتراكه؟',
+      message: t.confirmSuspendShop,
       onConfirm: async () => {
         try {
           await updateDoc(doc(db, "platformShops", String(shopId)), {
             status: 'suspended',
             suspendedAt: new Date().toISOString()
           });
-          showToast('تم تعليق المحل وإيقاف اشتراكه بنجاح.', 'success');
+          showToast(t.shopSuspendedSuccess, 'success');
         } catch (e) {
-          showToast('حدث خطأ أثناء تعليق الفرع.', 'error');
+          showToast(t.suspendShopError, 'error');
         }
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
@@ -564,15 +586,15 @@ export default function App() {
         suspendedAt: null,
         gracePeriodExpiry: null
       });
-      showToast('تم تفعيل الفرع بنجاح!', 'success');
+      showToast(t.shopActivatedSuccess, 'success');
     } catch (e) {
-      showToast('حدث خطأ أثناء تفعيل الفرع.', 'error');
+      showToast(t.updateError, 'error');
     }
   };
 
   const handleAddAnnouncement = async (e) => {
     e.preventDefault();
-    if (!ownerNoticeTitle || !ownerNoticeText || selectedShopId === 'all') return showToast('الرجاء اختيار فرع محدد وتعبئة العنوان ونَص الملاحظة', 'error');
+    if (!ownerNoticeTitle || !ownerNoticeText || selectedShopId === 'all') return showToast(t.announcementFillError, 'error');
     
     try {
       await addDoc(collection(db, "shops", String(selectedShopId), "announcements"), {
@@ -582,20 +604,20 @@ export default function App() {
       });
       setOwnerNoticeTitle('');
       setOwnerNoticeText('');
-      showToast('تم نشر التنبيه بنجاح للعامل في الفرع! 📢✨', 'success');
+      showToast(t.announcementAddedSuccess, 'success');
     } catch (error) {
-      showToast('حدث خطأ أثناء نشر التنبيه.', 'error');
+      showToast(t.announcementError, 'error');
     }
   };
 
   const handleDeleteAnnouncement = (shopId, annId) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من حذف هذا التنبيه؟',
+      message: t.confirmDeleteAnn,
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, "shops", String(shopId), "announcements", String(annId)));
-          showToast('تم حذف التنبيه بنجاح.', 'success');
+          showToast(t.announcementDeletedSuccess, 'success');
         } catch (error) {}
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
@@ -609,14 +631,14 @@ export default function App() {
         debtorName: debtObj.debtorName,
         amount: debtObj.amount,
         method: repayMethod,
-        notes: repayNotes || 'تسديد دين سابق',
+        notes: repayNotes || 'تسديد دين',
         date: repayDate
       });
       setSettlingDebtId(null);
       setRepayNotes('');
-      showToast(`تم تسديد دين الزبون (${debtObj.debtorName}) بقيمة ${debtObj.amount} ليرة بنجاح وإضافته للصندوق! 💵✅`, 'success');
+      showToast(t.debtSettledSuccess.replace('{name}', debtObj.debtorName).replace('{amount}', debtObj.amount), 'success');
     } catch (error) {
-      showToast('حدث خطأ أثناء تسديد الدين.', 'error');
+      showToast(t.settleError, 'error');
     }
   };
 
@@ -649,7 +671,7 @@ export default function App() {
           if (type === 'before') setBeforePhoto(compressed);
           if (type === 'after') setAfterPhoto(compressed);
         } catch (err) {
-          showToast('خطأ في معالجة الصورة.', 'error');
+          showToast(t.imageProcessError, 'error');
         }
       };
       img.src = event.target.result;
@@ -659,7 +681,7 @@ export default function App() {
 
   const handlePrintInvoice = (inv) => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return showToast('يرجى السماح بفتح النوافذ المنبثقة.', 'error');
+    if (!printWindow) return showToast(t.allowPopupsError, 'error');
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -683,11 +705,11 @@ export default function App() {
             <h2>🏪 ${inv.shopName}</h2>
             <p>${inv.shopInfo?.address || 'İskenderun'} | ${t.phoneLabel} <span dir="ltr">${inv.shopInfo?.phone || '+90...'}</span></p>
           </div>
-          <div class="row"><span>${t.vehicleCatLabel}</span><strong>${inv.vehicleCategory} (${inv.carModel || ''})</strong></div>
+          <div class="row"><span>${t.vehicleCatLabel}</span><strong>${translateVehicleCategory(inv.vehicleCategory)} (${inv.carModel || ''})</strong></div>
           <div class="row"><span>${t.plateNumber}</span><strong>${inv.plate}</strong></div>
-          <div class="row"><span>${t.serviceNameLabel}</span><strong>${inv.service}</strong></div>
+          <div class="row"><span>${t.serviceNameLabel}</span><strong>${translateServiceType(inv.service)}</strong></div>
           <div class="row"><span>${t.startTimePlaceholder} / ${t.endTimePlaceholder}:</span><strong>${inv.startTime || '-'} ➔ ${inv.endTime || '-'}</strong></div>
-          <div class="row"><span>${t.paymentMethod}:</span><strong>${inv.method}</strong></div>
+          <div class="row"><span>${t.paymentMethod}:</span><strong>${translatePaymentMethod(inv.method)}</strong></div>
           ${inv.notes ? `<div class="row"><span>${t.notesOptional}:</span><strong>${inv.notes}</strong></div>` : ''}
 
           ${(inv.beforePhoto || inv.afterPhoto) ? `
@@ -708,10 +730,10 @@ export default function App() {
 
   const handleOwnerSaveShop = async (e) => {
     e.preventDefault();
-    if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast('يرجى تعبئة اسم الفرع وإيميل وكلمة سر العامل', 'error');
+    if (!newShopName || !newWorkerEmail || !newWorkerPass) return showToast(t.fillShopFieldsError, 'error');
 
     if (newShopPhone && !validateTurkishPhone(newShopPhone)) {
-      showToast('رقم هاتف الفرع غير صحيح! يجب ألا يتجاوز 11 رقماً.', 'error');
+      showToast(t.invalidPhoneError, 'error');
       return;
     }
 
@@ -730,7 +752,7 @@ export default function App() {
       }
 
       if (ownedShops.length >= maxAllowedShops) {
-        showToast(`عذراً، باقتك الحالية (${subType}) تمنحك حق إنشاء ${maxAllowedShops} فرع كحد أقصى. يرجى ترقية الباقة لدى الإدارة!`, 'error');
+        showToast(t.planLimitReachedError.replace('{plan}', subType).replace('{limit}', maxAllowedShops), 'error');
         return;
       }
     }
@@ -751,11 +773,11 @@ export default function App() {
         name: newShopName,
         owner: currentUser.ownerName,
         ownerEmail: currentUser.email,
-        taxNumber: currentUser.taxNumber || ownerTaxNumber || 'غير مسجل',
+        taxNumber: currentUser.taxNumber || ownerTaxNumber || t.unregistered,
         workerEmail: newWorkerEmail,
         workerPass: newWorkerPass,
         phone: newShopPhone || '+90 ...',
-        address: newShopAddress || 'العنوان لم يحدد',
+        address: newShopAddress || t.unspecified,
         code: existingShop.code || ('SHOP-' + Math.floor(100 + Math.random() * 900)),
         status: existingShop.status || 'active',
         subscriptionType: baseSubscriptionType,
@@ -783,9 +805,9 @@ export default function App() {
       setEditingShopId(null);
       setSelectedShopId(shopId);
       
-      showToast(editingShopId ? 'تم تحديث بيانات الفرع بنجاح! ✏️✨' : 'تم إضافة الفرع الجديد بنجاح وربطه باشتراكك الأساسي! 🏪✨', 'success');
+      showToast(editingShopId ? t.shopUpdatedSuccess : t.shopAddedSuccess, 'success');
     } catch (error) {
-      showToast('حدث خطأ أثناء الحفظ: ' + error.message, 'error');
+      showToast(t.saveError + error.message, 'error');
     }
   };
 
@@ -801,7 +823,7 @@ export default function App() {
   const handleDeleteShopByOwner = (shopId) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من حذف هذا الفرع نهائياً من مجموعتك؟',
+      message: t.confirmDeleteShop,
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, "platformShops", String(shopId)));
@@ -814,9 +836,9 @@ export default function App() {
           if (selectedShopId === Number(shopId)) {
             setSelectedShopId(updatedOwnedShops[0]?.id || 'all');
           }
-          showToast('تم حذف الفرع بنجاح 🗑️', 'success');
+          showToast(t.shopDeletedSuccess, 'success');
         } catch (e) {
-          showToast('حدث خطأ أثناء حذف الفرع', 'error');
+          showToast(t.deleteShopError, 'error');
         }
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
@@ -826,40 +848,40 @@ export default function App() {
   const handleDeleteTransactionByOwner = (shopId, txId) => {
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من حذف هذه العملية؟',
+      message: t.confirmDeleteTx,
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, "shops", String(shopId), "transactions", String(txId)));
-          showToast('تم الحذف بنجاح', 'success');
+          showToast(t.txDeletedSuccess, 'success');
         } catch (e) {}
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
     });
   };
 
-  const handleStartEditTransaction = (t) => {
-    setEditingTxId(t.id);
-    setVehicleCategory(t.vehicleCategory || 'سيارة');
-    setCarModel(t.carModel || '');
-    setPlateNumber(t.plate);
-    setServiceType(t.service);
-    setPrice(t.price);
-    setPayMethod(t.method);
-    setTxNotes(t.notes || '');
-    setStartTime(t.startTime);
-    setEndTime(t.endTime);
-    if (t.beforePhoto) setBeforePhoto(t.beforePhoto);
-    if (t.afterPhoto) setAfterPhoto(t.afterPhoto);
+  const handleStartEditTransaction = (tItem) => {
+    setEditingTxId(tItem.id);
+    setVehicleCategory(tItem.vehicleCategory || 'سيارة');
+    setCarModel(tItem.carModel || '');
+    setPlateNumber(tItem.plate);
+    setServiceType(tItem.service);
+    setPrice(tItem.price);
+    setPayMethod(tItem.method);
+    setTxNotes(tItem.notes || '');
+    setStartTime(tItem.startTime);
+    setEndTime(tItem.endTime);
+    if (tItem.beforePhoto) setBeforePhoto(tItem.beforePhoto);
+    if (tItem.afterPhoto) setAfterPhoto(tItem.afterPhoto);
   };
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
-    if (!plateNumber || !price || !currentUser) return showToast('أدخل اللوحة والسعر!', 'error');
+    if (!plateNumber || !price || !currentUser) return showToast(t.fillPlatePriceError, 'error');
     const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
-    if (!shopId || shopId === 'all') return showToast('اختر محلاً محدداً', 'error');
+    if (!shopId || shopId === 'all') return showToast(t.selectSpecificShopError, 'error');
 
     if (debtorPhone && !validateTurkishPhone(debtorPhone)) {
-      showToast('رقم هاتف الزبون المدين غير صحيح! الحد الأقصى 11 رقماً.', 'error');
+      showToast(t.invalidPhoneError, 'error');
       return;
     }
 
@@ -870,7 +892,7 @@ export default function App() {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, beforePhoto, afterPhoto
         });
         setEditingTxId(null);
-        showToast('تم التحديث بنجاح ✏️', 'success');
+        showToast(t.txUpdatedSuccess, 'success');
       } else {
         await addDoc(collection(db, "shops", String(shopId), "transactions"), {
           vehicleCategory, carModel: vehicleCategory === 'سيارة' ? carModel : 'دراجة نارية', plate: plateNumber, service: serviceType, price: Number(price), paid: payMethod === 'دين' ? 0 : Number(price), method: payMethod, notes: txNotes, startTime, endTime, date: todayDateStr, beforePhoto, afterPhoto
@@ -881,16 +903,16 @@ export default function App() {
           });
           setDebtorName(''); setDebtorPhone('');
         }
-        showToast('تم تسجيل الطلب بنجاح! 🚗✨', 'success');
+        showToast(t.txAddedSuccess, 'success');
       }
       setPlateNumber(''); setCarModel(''); setPrice(''); setTxNotes(''); setBeforePhoto(null); setAfterPhoto(null);
-    } catch (e) { showToast('خطأ: ' + e.message, 'error'); }
+    } catch (e) { showToast(t.saveError + e.message, 'error'); }
   };
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const shopId = currentUser.role === 'worker' ? currentUser.shopId : selectedShopId;
-    if (!expTitle || !expAmount || !shopId || shopId === 'all') return showToast('أدخل بيانات المصروف وافرز المحل بدقة', 'error');
+    if (!expTitle || !expAmount || !shopId || shopId === 'all') return showToast(t.fillExpFieldsError, 'error');
     
     try {
       const todayDateStr = new Date().toISOString().slice(0, 10);
@@ -903,14 +925,14 @@ export default function App() {
         time: new Date().toLocaleTimeString()
       });
       setExpTitle(''); setExpAmount(''); setExpNotes('');
-      showToast('تم تسجيل المصروف بنجاح وخصمه من كشف الحساب والأرباح! 📉✅', 'success');
-    } catch (e) { showToast('حدث خطأ أثناء حفظ المصروف', 'error'); }
+      showToast(t.expAddedSuccess, 'success');
+    } catch (e) { showToast(t.expError, 'error'); }
   };
 
   const handleAddPricingPlan = (e) => {
     e.preventDefault();
     if (!newPlanName || !newPlanPrice || !newPlanMaxShops) {
-      showToast(t.loginError, 'error');
+      showToast(t.fillPlanFieldsError, 'error');
       return;
     }
     const planTypeKey = newPlanType ? newPlanType.toLowerCase().replace(/\s+/g, '_') : ('plan_' + Date.now());
@@ -927,20 +949,20 @@ export default function App() {
     setNewPlanType('');
     setNewPlanPrice('');
     setNewPlanMaxShops('');
-    showToast('تم إضافة الباقة الجديدة بنجاح! 🌟', 'success');
+    showToast(t.planAddedSuccess, 'success');
   };
 
   const handleDeletePricingPlan = (planId) => {
     if (pricingPlans.length <= 1) {
-      showToast('يجب أن تبقى باقة واحدة على الأقل في النظام!', 'error');
+      showToast(t.onePlanMustRemain, 'error');
       return;
     }
     setConfirmModal({
       isOpen: true,
-      message: 'هل أنت متأكد من حذف هذه الباقة؟',
+      message: t.confirmDeletePlan,
       onConfirm: () => {
         setPricingPlans(pricingPlans.filter(p => p.id !== planId));
-        showToast('تم حذف الباقة بنجاح.', 'success');
+        showToast(t.planDeletedSuccess, 'success');
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
       }
     });
@@ -961,7 +983,7 @@ export default function App() {
       maxShops: Number(editPlanMaxShops)
     } : p));
     setEditingPlanId(null);
-    showToast('تم تحديث بيانات الباقة بنجاح! ✅', 'success');
+    showToast(t.planUpdatedSuccess, 'success');
   };
 
   const calculateTimeRemaining = (expiryDateStr) => {
@@ -973,11 +995,10 @@ export default function App() {
     return t.timeRemainingDaysHours.replace('{days}', days).replace('{hours}', hours);
   };
 
-  // 🌟 المكون الاحترافي لزر تبديل اللغة (Language Switcher)
   const renderLanguageSwitcher = (theme = 'dark') => {
     const isDark = theme === 'dark';
     return (
-      <div className="relative inline-block text-left" ref={langDropdownRef}>
+      <div className="relative inline-block text-start" ref={langDropdownRef}>
         <button
           type="button"
           onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
@@ -1090,7 +1111,6 @@ export default function App() {
         {renderToastComponent()}
         {renderConfirmModal()}
         
-        {/* زر تبديل اللغة الأنيق في أعلى شاشة الدخول */}
         <div className="absolute top-6 end-6 z-20">
           {renderLanguageSwitcher('dark')}
         </div>
@@ -1143,9 +1163,9 @@ export default function App() {
       const email = s.ownerEmail ? s.ownerEmail.toLowerCase() : 'unknown@domain.com';
       if (!clientsMap[email]) {
         clientsMap[email] = {
-          ownerName: s.owner || 'غير محدد',
+          ownerName: s.owner || t.unspecified,
           ownerEmail: email,
-          taxNumber: s.taxNumber || 'غير مسجل',
+          taxNumber: s.taxNumber || t.unregistered,
           phone: s.phone || '+90...',
           discountPercent: s.discountPercent || 0,
           shopsList: []
@@ -1311,7 +1331,6 @@ export default function App() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{client.phone}</span></p>
-                        <p className="text-xs text-red-600 font-semibold mt-1">عدد الفروع المعلقة: {client.shopsList.length}</p>
                       </div>
                       <button onClick={() => setSelectedClientEmail(client.ownerEmail)} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
                         {t.manageAndActivate}
@@ -1337,11 +1356,11 @@ export default function App() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientFullName}</label>
-                    <input type="text" placeholder="مثال: خالد أحمد" value={newClientName} onChange={e => setNewClientName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم العميل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    <input type="text" placeholder={t.defaultOwnerName} value={newClientName} onChange={e => setNewClientName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">{t.clientEmail}</label>
-                    <input type="email" placeholder="khaled@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                    <input type="email" placeholder="client@gmail.com" value={newClientEmail} onChange={e => setNewClientEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   </div>
                 </div>
 
@@ -1358,16 +1377,16 @@ export default function App() {
 
                 <div className="border-t pt-4 space-y-3">
                   <h4 className="font-bold text-sm text-purple-700">{t.firstBranchDetails}</h4>
-                  <input type="text" placeholder={t.firstBranchName} value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع الأول')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                  <input type="text" placeholder={t.firstBranchName} value={newClientShopName} onChange={e => setNewClientShopName(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">{t.workerEmail}</label>
-                      <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                      <input type="email" placeholder="worker@gmail.com" value={newClientWorkerEmail} onChange={e => setNewClientWorkerEmail(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">{t.workerPass}</label>
-                      <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة سر العامل')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
+                      <input type="password" placeholder="••••••••" value={newClientWorkerPass} onChange={e => setNewClientWorkerPass(e.target.value)} className="w-full px-3 py-2.5 border rounded-xl text-sm text-gray-900 bg-white" required />
                     </div>
                   </div>
 
@@ -1397,11 +1416,9 @@ export default function App() {
                       <label className="block text-xs font-bold text-gray-700 mb-1">{t.planName}</label>
                       <input 
                         type="text" 
-                        placeholder="مثال: الباقة الذهبية" 
+                        placeholder={t.defaultMonthlyPlan} 
                         value={newPlanName} 
                         onChange={e => setNewPlanName(e.target.value)} 
-                        onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الباقة')}
-                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-semibold" 
                         required 
                       />
@@ -1426,8 +1443,6 @@ export default function App() {
                         placeholder="7500" 
                         value={newPlanPrice} 
                         onChange={e => setNewPlanPrice(e.target.value)} 
-                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد السعر')}
-                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
                         required 
                       />
@@ -1439,8 +1454,6 @@ export default function App() {
                         placeholder="7" 
                         value={newPlanMaxShops} 
                         onChange={e => setNewPlanMaxShops(e.target.value)} 
-                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد الحد الأقصى للفروع')}
-                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-4 py-3 border rounded-xl text-sm bg-slate-50 focus:bg-white text-gray-900 font-bold" 
                         required 
                       />
@@ -1565,7 +1578,7 @@ export default function App() {
                           for (const shop of clientShops) {
                             await updateDoc(doc(db, "platformShops", String(shop.id)), { discountPercent: 0 });
                           }
-                          showToast('تم إزالة الخصم عن العميل بنجاح.', 'success');
+                          showToast(t.discountRemovedSuccess, 'success');
                         }}
                         className="bg-red-100 text-red-700 px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer"
                       >
@@ -1611,9 +1624,9 @@ export default function App() {
                 <form onSubmit={handleSaveClientEdits} className="bg-blue-50 p-5 rounded-2xl border border-blue-200 space-y-3">
                   <h4 className="font-bold text-sm text-blue-900">{t.editClientDataTitle}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder="اسم العميل" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
+                    <input type="text" value={editingClientData.ownerName} onChange={e => setEditingClientData({...editingClientData, ownerName: e.target.value})} placeholder={t.clientFullName} className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" required />
                     <input type="text" dir="ltr" maxLength={11} value={editingClientData.phone} onChange={e => setEditingClientData({...editingClientData, phone: e.target.value.replace(/\D/g, '').slice(0, 11)})} placeholder="05XXXXXXXXX" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 text-start" />
-                    <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder="الرقم الضريبي" className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
+                    <input type="text" value={editingClientData.taxNumber} onChange={e => setEditingClientData({...editingClientData, taxNumber: e.target.value})} placeholder={t.clientTax} className="px-3 py-2 border rounded-xl text-xs bg-white text-gray-900" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">{t.save}</button>
@@ -1792,9 +1805,9 @@ export default function App() {
     const shopDebts = debts[shopId] || [];
     const shopAnnouncementsList = announcements[shopId] || [];
 
-    const filteredWorkerTx = shopTx.filter(t => {
-      const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
-      const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
+    const filteredWorkerTx = shopTx.filter(tItem => {
+      const matchDate = !selectedDateFilter || tItem.date === selectedDateFilter;
+      const matchPlate = !plateSearchQuery || (tItem.plate && tItem.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
       return matchDate && matchPlate;
     });
 
@@ -1867,8 +1880,6 @@ export default function App() {
                         placeholder={t.searchCarPlaceholder} 
                         value={carModel} 
                         onChange={e => setCarModel(e.target.value)} 
-                        onInvalid={e => e.target.setCustomValidity('يرجى تحديد موديل السيارة')}
-                        onInput={e => e.target.setCustomValidity('')}
                         className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900 font-semibold outline-none focus:ring-2 focus:ring-blue-500" 
                         required 
                       />
@@ -1880,7 +1891,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <input type="text" placeholder={t.plateNumber} value={plateNumber} onChange={e => setPlateNumber(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم اللوحة')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
+                  <input type="text" placeholder={t.plateNumber} value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full px-3 py-2 border rounded-xl uppercase font-bold text-sm text-gray-900" required />
                   
                   <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm bg-white text-gray-900">
                     {t.servicesList.map((srv, idx) => (
@@ -1895,7 +1906,7 @@ export default function App() {
 
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">{t.priceManual}</label>
-                    <input type="number" placeholder={t.enterPricePlaceholder} value={price} onChange={e => setPrice(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال السعر المطلوب')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
+                    <input type="number" placeholder={t.enterPricePlaceholder} value={price} onChange={e => setPrice(e.target.value)} className="w-full px-3 py-2.5 border-2 border-blue-400 rounded-xl font-black text-blue-700 text-base outline-none bg-blue-50/50" required />
                   </div>
 
                   <div>
@@ -1947,8 +1958,8 @@ export default function App() {
                   {payMethod === 'دين' && (
                     <div className="bg-red-50 p-3 rounded-xl border border-red-200 space-y-2">
                       <span className="text-xs font-bold text-red-700 block">{t.debtorDetails}</span>
-                      <input type="text" placeholder={t.debtorFullName} value={debtorName} onChange={e => setDebtorName(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الزبون')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
-                      <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} onInvalid={e => e.target.setCustomValidity('يرجى إدخال رقم الهاتف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-start" required />
+                      <input type="text" placeholder={t.debtorFullName} value={debtorName} onChange={e => setDebtorName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold" required />
+                      <input type="text" dir="ltr" maxLength={11} placeholder="05XXXXXXXXX *" value={debtorPhone} onChange={e => setDebtorPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} className="w-full px-3 py-2 border rounded-xl text-xs bg-white text-gray-900 font-semibold text-start" required />
                     </div>
                   )}
 
@@ -1971,8 +1982,8 @@ export default function App() {
                       <option key={i} value={c}>{c}</option>
                     ))}
                   </select>
-                  <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                  <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                  <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
                   <textarea placeholder={t.expNotesPlaceholder} value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
                   <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">{t.deductAndSaveExp}</button>
                 </form>
@@ -1992,7 +2003,7 @@ export default function App() {
                       <div key={d.id} className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-sm">
                         <div>
                           <span className="font-bold text-gray-900">{t.customerLabel} {d.debtorName} (<span dir="ltr">{d.phone}</span>)</span>
-                          <p className="text-xs text-gray-600">{t.serviceLabel} {d.service} | {t.amountLabel} <strong className="text-red-600">{d.amount} {t.currency}</strong></p>
+                          <p className="text-xs text-gray-600">{t.serviceLabel} {translateServiceType(d.service)} | {t.amountLabel} <strong className="text-red-600">{d.amount} {t.currency}</strong></p>
                           <span className="text-[10px] text-gray-400">{t.debtDateLabel} {d.date}</span>
                         </div>
 
@@ -2080,8 +2091,8 @@ export default function App() {
                             <span className="font-bold block text-base text-gray-900">🏪 {currentUser.shopName}</span>
                             <span className="text-[11px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-mono font-bold">{t.dateLabel} {tItem.date || t.unspecified}</span>
                           </div>
-                          <span className="text-sm font-semibold text-blue-600">[{tItem.vehicleCategory}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span>
-                          <p className="text-xs text-gray-600">{tItem.service} | {t.paymentMethod}: {tItem.method === 'دين' ? t.debt : tItem.method}</p>
+                          <span className="text-sm font-semibold text-blue-600">[{translateVehicleCategory(tItem.vehicleCategory)}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span>
+                          <p className="text-xs text-gray-600">{translateServiceType(tItem.service)} | {t.paymentMethod}: {translatePaymentMethod(tItem.method)}</p>
                           {tItem.notes && <p className="text-xs text-amber-700 italic">{t.notesOptional}: {tItem.notes}</p>}
                           <span className="text-xs font-bold text-emerald-600">{t.inputAmount} {tItem.price} {t.currency} {tItem.method === 'دين' && t.onCreditBadge}</span>
                         </div>
@@ -2133,17 +2144,17 @@ export default function App() {
     const debtList = debts[id] || [];
     const repList = debtRepayments[id] || [];
 
-    const rev = txList.reduce((acc, t) => acc + Number(t.paid), 0) + repList.reduce((acc, r) => acc + Number(r.amount), 0);
+    const rev = txList.reduce((acc, tItem) => acc + Number(tItem.paid), 0) + repList.reduce((acc, r) => acc + Number(r.amount), 0);
     const exp = expList.reduce((acc, e) => acc + Number(e.amount), 0);
     
     totalRevenueAll += rev;
     totalExpensesAll += exp;
     
-    const cashFromTx = txList.filter(t => t.method === 'كاش').reduce((acc, t) => acc + Number(t.paid), 0);
+    const cashFromTx = txList.filter(tItem => tItem.method === 'كاش').reduce((acc, tItem) => acc + Number(tItem.paid), 0);
     const cashFromRepay = repList.filter(r => r.method === 'كاش').reduce((acc, r) => acc + Number(r.amount), 0);
     totalCashAll += (cashFromTx + cashFromRepay - exp);
 
-    const bankFromTx = txList.filter(t => t.method === 'بنك').reduce((acc, t) => acc + Number(t.paid), 0);
+    const bankFromTx = txList.filter(tItem => tItem.method === 'بنك').reduce((acc, tItem) => acc + Number(tItem.paid), 0);
     const bankFromRepay = repList.filter(r => r.method === 'بنك').reduce((acc, r) => acc + Number(r.amount), 0);
     totalBankAll += (bankFromTx + bankFromRepay);
 
@@ -2162,14 +2173,14 @@ export default function App() {
   const shopRepayList = debtRepayments[selectedShopId] || [];
   const shopAnnouncementsList = announcements[selectedShopId] || [];
 
-  const filteredOwnerTx = currentShopTx.filter(t => {
-    const matchDate = !selectedDateFilter || t.date === selectedDateFilter;
-    const matchPlate = !plateSearchQuery || (t.plate && t.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
+  const filteredOwnerTx = currentShopTx.filter(tItem => {
+    const matchDate = !selectedDateFilter || tItem.date === selectedDateFilter;
+    const matchPlate = !plateSearchQuery || (tItem.plate && tItem.plate.toLowerCase().includes(plateSearchQuery.toLowerCase()));
     return matchDate && matchPlate;
   });
 
-  const shopTotalServices = currentShopTx.reduce((acc, t) => acc + Number(t.price), 0);
-  const shopTotalPaid = currentShopTx.reduce((acc, t) => acc + Number(t.paid), 0) + shopRepayList.reduce((acc, r) => acc + Number(r.amount), 0);
+  const shopTotalServices = currentShopTx.reduce((acc, tItem) => acc + Number(tItem.price), 0);
+  const shopTotalPaid = currentShopTx.reduce((acc, tItem) => acc + Number(tItem.paid), 0) + shopRepayList.reduce((acc, r) => acc + Number(r.amount), 0);
   const shopTotalDebtAmount = currentShopDebts.reduce((acc, d) => acc + Number(d.amount), 0);
   const shopTotalExpenses = currentShopExpenses.reduce((acc, e) => acc + Number(e.amount), 0);
   const shopNetProfit = shopTotalPaid - shopTotalExpenses;
@@ -2192,7 +2203,7 @@ export default function App() {
         </div>
       )}
 
-      {/* الهيدر العلوي المحدث بأعلى معايير الفخامة والعصرية */}
+      {/* الهيدر العلوي المحدث */}
       <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-2xl flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white">
@@ -2214,7 +2225,7 @@ export default function App() {
               onChange={e => setSelectedShopId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
               className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold border border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer shadow-inner"
             >
-              {ownedShops.map(s => <option key={s.id} value={s.id}>🏪 {s.name} {s.status === 'suspended' ? '(معلق/منتهي)' : ''}</option>)}
+              {ownedShops.map(s => <option key={s.id} value={s.id}>🏪 {s.name} {s.status === 'suspended' ? `(${t.suspendedBadge})` : ''}</option>)}
               <option value="all">{t.combinedReportOption.replace('{count}', ownedShops.length)}</option>
             </select>
           </div>
@@ -2230,7 +2241,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* شريط التنقل الاحترافي */}
+      {/* شريط التنقل */}
       <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-3 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
         <button 
           onClick={() => setActiveTab('dashboard')} 
@@ -2272,7 +2283,6 @@ export default function App() {
                   <span className="inline-block mt-2 px-3 py-1 bg-red-500 text-white text-xs rounded-full font-bold">{t.shopSuspendedRenewNotice}</span>
                 )}
                 
-                {/* عداد الوقت المتبقي للباقة */}
                 {currentShop && (
                   <div className="mt-3 inline-flex items-center gap-2 bg-white/10 px-3.5 py-2 rounded-xl backdrop-blur-md text-xs font-bold border border-white/15 shadow-inner">
                     <span>{t.packageCounterLabel}</span>
@@ -2325,8 +2335,6 @@ export default function App() {
                       placeholder={t.alertTitlePlaceholder} 
                       value={ownerNoticeTitle} 
                       onChange={e => setOwnerNoticeTitle(e.target.value)} 
-                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان التنبيه')}
-                      onInput={e => e.target.setCustomValidity('')}
                       className="px-3 py-2 border rounded-xl text-sm text-gray-900 bg-white" 
                       required
                     />
@@ -2342,8 +2350,6 @@ export default function App() {
                     placeholder={t.alertTextPlaceholder} 
                     value={ownerNoticeText} 
                     onChange={e => setOwnerNoticeText(e.target.value)} 
-                    onInvalid={e => e.target.setCustomValidity('يرجى كتابة نص التنبيه')}
-                    onInput={e => e.target.setCustomValidity('')}
                     className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900 bg-white" 
                     required
                   />
@@ -2402,7 +2408,7 @@ export default function App() {
                       <div key={d.id} className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex justify-between items-center text-sm">
                         <div>
                           <span className="font-bold text-gray-900">🏪 {d.shopName} | {t.customerLabel} {d.debtorName}</span>
-                          <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {d.service} ({t.dateLabel} {d.date})</p>
+                          <p className="text-xs text-gray-600">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {translateServiceType(d.service)} ({t.dateLabel} {d.date})</p>
                         </div>
                         <span className="font-black text-red-600 text-base">{d.amount} {t.currency}</span>
                       </div>
@@ -2422,8 +2428,8 @@ export default function App() {
                         <option key={i} value={c}>{c}</option>
                       ))}
                     </select>
-                    <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال عنوان المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
-                    <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} onInvalid={e => e.target.setCustomValidity('يرجى إدخال مبلغ المصروف')} onInput={e => e.target.setCustomValidity('')} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="text" placeholder={t.expTitlePlaceholder} value={expTitle} onChange={e => setExpTitle(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
+                    <input type="number" placeholder={t.expAmountPlaceholder} value={expAmount} onChange={e => setExpAmount(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900" required />
                     <textarea placeholder={t.expNotesPlaceholder} value={expNotes} onChange={e => setExpNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm h-16 resize-none text-gray-900" />
                     <button type="submit" className="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold cursor-pointer">{t.deductAndSaveExp}</button>
                   </form>
@@ -2488,8 +2494,8 @@ export default function App() {
                               <span className="font-bold block text-gray-900">🏪 {currentShop.name}</span>
                               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono font-bold">{t.dateLabel} {tItem.date || t.unspecified}</span>
                             </div>
-                            <span className="font-bold text-blue-600">[{tItem.vehicleCategory}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span> - {tItem.service}
-                            <span className="block text-xs text-gray-500">{t.registeredAmount} {tItem.price} {t.currency} | {t.statusLabel} {tItem.method === 'دين' ? t.debt : tItem.method} {tItem.notes && `| ${t.notesOptional}: ${tItem.notes}`}</span>
+                            <span className="font-bold text-blue-600">[{translateVehicleCategory(tItem.vehicleCategory)}] {tItem.carModel} | {t.plateNumber} {tItem.plate}</span> - {translateServiceType(tItem.service)}
+                            <span className="block text-xs text-gray-500">{t.registeredAmount} {tItem.price} {t.currency} | {t.statusLabel} {translatePaymentMethod(tItem.method)} {tItem.notes && `| ${t.notesOptional}: ${tItem.notes}`}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <button onClick={() => handleDeleteTransactionByOwner(selectedShopId, tItem.id)} className="bg-red-100 text-red-700 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1"><Trash2 size={13} /> {t.adminDelete}</button>
@@ -2543,8 +2549,6 @@ export default function App() {
                     placeholder={t.shopNamePlaceholder} 
                     value={newShopName} 
                     onChange={e => setNewShopName(e.target.value)} 
-                    onInvalid={e => e.target.setCustomValidity('يرجى إدخال اسم الفرع')}
-                    onInput={e => e.target.setCustomValidity('')}
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                     required 
                   />
@@ -2558,8 +2562,6 @@ export default function App() {
                       placeholder="worker@gmail.com" 
                       value={newWorkerEmail} 
                       onChange={e => setNewWorkerEmail(e.target.value)} 
-                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال بريد العامل')}
-                      onInput={e => e.target.setCustomValidity('')}
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                       required 
                     />
@@ -2571,8 +2573,6 @@ export default function App() {
                       placeholder="••••••••" 
                       value={newWorkerPass} 
                       onChange={e => setNewWorkerPass(e.target.value)} 
-                      onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة سر العامل')}
-                      onInput={e => e.target.setCustomValidity('')}
                       className="w-full px-4 py-3 border border-slate-200 rounded-2xl text-sm text-gray-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-purple-500 outline-none transition font-semibold" 
                       required 
                     />
@@ -2715,7 +2715,7 @@ export default function App() {
                     <div key={d.id} className="p-3 bg-white rounded-xl shadow-xs flex justify-between items-center text-sm border border-amber-100">
                       <div>
                         <span className="font-bold text-gray-900">{t.customerLabel} {d.debtorName}</span>
-                        <p className="text-xs text-gray-700">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {d.service}</p>
+                        <p className="text-xs text-gray-700">{t.phoneLabel} <span dir="ltr">{d.phone}</span> | {t.serviceLabel} {translateServiceType(d.service)}</p>
                         <span className="text-[10px] text-gray-500">{t.dateLabel} {d.date} ({t.addedBy} {d.addedBy})</span>
                       </div>
                       <span className="text-base font-black text-red-600">{d.amount} {t.currency}</span>
@@ -2744,7 +2744,7 @@ export default function App() {
         {activeTab === 'profile' && (
           <div className="bg-white p-8 rounded-3xl shadow-sm border max-w-xl mx-auto space-y-4">
             <h3 className="text-xl font-bold text-gray-900">{t.profileAndTaxTitle}</h3>
-            <form onSubmit={e => { e.preventDefault(); showToast('تم تحديث البيانات بنجاح!', 'success'); }} className="space-y-3">
+            <form onSubmit={e => { e.preventDefault(); showToast(t.profileUpdatedSuccess, 'success'); }} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">{t.ownerOrgName}</label>
                 <input type="text" defaultValue={currentUser.ownerName} className="w-full px-3 py-2 border rounded-xl text-sm text-gray-900 font-semibold" />
@@ -2773,10 +2773,10 @@ export default function App() {
                 <span className="inline-block mt-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">{t.officialInvoiceBadge}</span>
               </div>
               <div className="space-y-2 text-sm text-gray-800 font-medium">
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.vehicleCatLabel}</span><span className="font-bold text-gray-900">{selectedInvoice.vehicleCategory} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : t.motorcycle})</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.vehicleCatLabel}</span><span className="font-bold text-gray-900">{translateVehicleCategory(selectedInvoice.vehicleCategory)} ({selectedInvoice.vehicleCategory === 'سيارة' ? selectedInvoice.carModel : t.motorcycle})</span></div>
                 <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.plateNumber}:</span><span className="font-bold text-gray-900">{selectedInvoice.plate}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.serviceNameLabel}:</span><span className="font-bold text-gray-900">{selectedInvoice.service}</span></div>
-                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.paymentMethod}:</span><span className="font-bold text-gray-900">{selectedInvoice.method === 'دين' ? t.onCreditBadge : selectedInvoice.method}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.serviceNameLabel}:</span><span className="font-bold text-gray-900">{translateServiceType(selectedInvoice.service)}</span></div>
+                <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.paymentMethod}:</span><span className="font-bold text-gray-900">{translatePaymentMethod(selectedInvoice.method)}</span></div>
                 
                 {selectedInvoice.notes && (
                   <div className="flex justify-between border-b pb-1"><span className="text-gray-600">{t.notesOptional}:</span><span className="font-bold text-amber-700">{selectedInvoice.notes}</span></div>
