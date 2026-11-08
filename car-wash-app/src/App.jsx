@@ -3,13 +3,84 @@ import {
   Car, Shield, Users, Building, Plus, Printer, Camera, Phone, MapPin, Tag, 
   Settings, DollarSign, Mail, AlertTriangle, Trash2, Edit3, Image as ImageIcon, 
   RefreshCw, Bike, Bell, CheckSquare, Award, FileSpreadsheet, UserPlus, Wallet,
-  LogOut, CheckCircle, UsersRound
+  LogOut, CheckCircle, UsersRound, Globe
 } from 'lucide-react';
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, setDoc } from 'firebase/firestore';
 
 export default function App() {
+  // 🌟 نظام اللغات (عربي، تركي، إنجليزي)
+  const [lang, setLang] = useState('ar');
+
+  const translations = {
+    ar: {
+      loginTitle: 'نظام إدارة المغاسل السحابي',
+      loginSub: 'سجل دخولك عبر النظام السحابي الآمن والفخم',
+      email: 'البريد الإلكتروني',
+      password: 'كلمة المرور',
+      forgotPass: 'نسيت كلمة المرور؟',
+      loginBtn: 'تسجيل الدخول الآمن 🚀',
+      secureNotice: 'حماية مشفرة بالكامل عبر بروتوكول السحابة الآمن',
+      logout: 'تسجيل خروج',
+      dashboard: '📊 نظرة عامة والجرد',
+      addShopNav: '➕ إدارة وإضافة الفروع',
+      accounting: '📑 كشف الحسابات والديون والأرباح',
+      profile: '⚙️ الملف الشخصي والضريبي',
+      activeShop: 'الفرع النشط حالياً',
+      netProfit: 'صافي الأرباح الكلي',
+      cashBox: 'صندوق الكاش 💵',
+      bankBox: 'حساب البنك / الشبكة 💳',
+      totalDebts: 'إجمالي الديون المعلقة ⚠️',
+      totalExpenses: 'إجمالي المصاريف 📉',
+      washedCars: 'المركبات المغسولة 🚗'
+    },
+    tr: {
+      loginTitle: 'Bulut Oto Yıkama Yönetim Sistemi',
+      loginSub: 'Güvenli bulut sistemi üzerinden giriş yapın',
+      email: 'E-posta Adresi',
+      password: 'Şifre',
+      forgotPass: 'Şifremi Unuttum?',
+      loginBtn: 'Güvenli Giriş 🚀',
+      secureNotice: 'Güvenli bulut protokolü ile tamamen şifrelenmiştir',
+      logout: 'Çıkış Yap',
+      dashboard: '📊 Genel Bakış ve Envanter',
+      addShopNav: '➕ Şube Yönetimi ve Ekleme',
+      accounting: '📑 Hesap Özeti, Borçlar ve Kâr',
+      profile: '⚙️ Profil ve Vergi Bilgileri',
+      activeShop: 'Aktif Şube',
+      netProfit: 'Toplam Net Kâr',
+      cashBox: 'Nakit Kasa 💵',
+      bankBox: 'Banka / Kart Hesabı 💳',
+      totalDebts: 'Bekleyen Borçlar ⚠️',
+      totalExpenses: 'Toplam Giderler 📉',
+      washedCars: 'Yıkanan Araçlar 🚗'
+    },
+    en: {
+      loginTitle: 'Cloud Car Wash Management',
+      loginSub: 'Sign in through the secure cloud system',
+      email: 'Email Address',
+      password: 'Password',
+      forgotPass: 'Forgot Password?',
+      loginBtn: 'Secure Login 🚀',
+      secureNotice: 'Fully encrypted via secure cloud protocol',
+      logout: 'Logout',
+      dashboard: '📊 Overview & Inventory',
+      addShopNav: '➕ Branch Management',
+      accounting: '📑 Accounts, Debts & Profits',
+      profile: '⚙️ Profile & Tax Info',
+      activeShop: 'Active Branch',
+      netProfit: 'Total Net Profit',
+      cashBox: 'Cash Box 💵',
+      bankBox: 'Bank / Card Account 💳',
+      totalDebts: 'Pending Debts ⚠️',
+      totalExpenses: 'Total Expenses 📉',
+      washedCars: 'Washed Cars 🚗'
+    }
+  };
+
+  const t = translations[lang];
+
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('carWash_currentUser');
@@ -482,7 +553,6 @@ export default function App() {
     }
   };
 
-  // 🌟 دالة حذف / إلغاء اشتراك العميل من لوحة المبرمج
   const handleRemoveClientSubscription = (clientEmail) => {
     setConfirmModal({
       isOpen: true,
@@ -997,41 +1067,84 @@ export default function App() {
     );
   };
 
+  // ================= 🌟 شاشة تسجيل الدخول الزجاجية الفخمة والحديثة (مع اختيار اللغات) =================
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden font-sans" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         {renderToastComponent()}
         {renderConfirmModal()}
-        <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full space-y-6">
-          <div className="bg-blue-100 text-blue-600 p-4 rounded-2xl w-20 h-20 flex items-center justify-center mx-auto shadow-inner"><Car size={40} /></div>
-          <div className="text-center"><h2 className="text-2xl font-black text-gray-800">نظام إدارة المغاسل السحابي</h2><p className="text-gray-500 text-sm mt-1">سجل دخولك عبر النظام السحابي الآمن</p></div>
-          <form onSubmit={handleFirebaseLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني</label>
+        
+        {/* زر تغيير اللغات في أعلى الشاشة */}
+        <div className="absolute top-6 left-6 z-20 flex items-center gap-2 bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl shadow-xl">
+          <Globe size={16} className="text-purple-400 mr-1 ml-1" />
+          <button onClick={() => setLang('ar')} className={`px-3 py-1 rounded-xl text-xs font-bold transition ${lang === 'ar' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>العربية</button>
+          <button onClick={() => setLang('tr')} className={`px-3 py-1 rounded-xl text-xs font-bold transition ${lang === 'tr' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>Türkçe</button>
+          <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-xl text-xs font-bold transition ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>English</button>
+        </div>
+
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="w-full max-w-md bg-slate-900/85 backdrop-blur-2xl border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10 space-y-8">
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25 text-white ring-4 ring-purple-500/10">
+              <Car size={32} />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-black text-white tracking-wide">{t.loginTitle}</h1>
+              <p className="text-xs text-slate-400 font-medium">{t.loginSub}</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleFirebaseLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-300">{t.email}</label>
               <input 
                 type="email" 
                 value={inputEmail} 
                 onChange={e => setInputEmail(e.target.value)} 
                 onInvalid={e => e.target.setCustomValidity('يرجى إدخال البريد الإلكتروني بشكل صحيح')}
                 onInput={e => e.target.setCustomValidity('')}
-                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
+                placeholder="name@gmail.com"
+                className="w-full px-4 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-medium" 
                 required 
               />
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-1"><label className="block text-xs font-bold text-gray-600">كلمة المرور</label><button type="button" onClick={handleForgotPassword} className="text-xs text-blue-600">نسيت كلمة المرور؟</button></div>
+
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold text-slate-300">{t.password}</label>
+                <button 
+                  type="button" 
+                  onClick={handleForgotPassword} 
+                  className="text-xs text-purple-400 hover:text-purple-300 font-semibold transition cursor-pointer"
+                >
+                  {t.forgotPass}
+                </button>
+              </div>
               <input 
                 type="password" 
                 value={inputPassword} 
                 onChange={e => setInputPassword(e.target.value)} 
                 onInvalid={e => e.target.setCustomValidity('يرجى إدخال كلمة المرور المطلوبة')}
                 onInput={e => e.target.setCustomValidity('')}
-                className="w-full px-4 py-3 border rounded-xl text-sm text-gray-900" 
+                placeholder="••••••••"
+                className="w-full px-4 py-3.5 bg-slate-950/60 border border-slate-800 rounded-2xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition font-medium" 
                 required 
               />
             </div>
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-2xl font-bold text-sm cursor-pointer shadow-lg">تسجيل الدخول الآمن 🚀</button>
+
+            <button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white py-4 rounded-2xl font-black text-sm cursor-pointer shadow-xl shadow-purple-600/25 transition transform active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              {t.loginBtn}
+            </button>
           </form>
+
+          <div className="pt-4 border-t border-slate-800 text-center flex items-center justify-center gap-2 text-slate-500 text-xs font-semibold">
+            <span>{t.secureNotice}</span>
+          </div>
         </div>
       </div>
     );
@@ -1075,11 +1188,11 @@ export default function App() {
     const regularClients = activeClientsList.filter(c => c.shopsList.length < 3);
 
     return (
-      <div className="min-h-screen bg-slate-100 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-100 font-sans" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
         {renderToastComponent()}
         {renderConfirmModal()}
 
-        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center">
+        <header className="bg-slate-950 border-b border-slate-800 text-white px-6 py-4 shadow-xl flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
               <Shield size={22} />
@@ -1089,9 +1202,18 @@ export default function App() {
               <p className="text-xs text-slate-400">إدارة المنصة، العملاء، وباقات الأسعار</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
-            <LogOut size={15} /> تسجيل خروج
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+              <button onClick={() => setLang('ar')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${lang === 'ar' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>AR</button>
+              <button onClick={() => setLang('tr')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${lang === 'tr' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>TR</button>
+              <button onClick={() => setLang('en')} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}>EN</button>
+            </div>
+
+            <button onClick={handleLogout} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 transition">
+              <LogOut size={15} /> {t.logout}
+            </button>
+          </div>
         </header>
 
         <nav className="bg-white border-b border-slate-200 px-6 py-3 flex gap-2 text-xs md:text-sm font-bold shadow-xs overflow-x-auto">
@@ -1531,7 +1653,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 🌟 منطقة منح وحذف الاشتراكات المرتبطة تلقائياً بصفحة وباقات الاشتراكات */}
+              {/* 🌟 منطقة إدارة اشتراكات العميل مرتبطة ديناميكياً بصفحة الباقات مع زر الحذف */}
               <div className="p-6 bg-slate-900 text-white rounded-3xl space-y-4 shadow-xl">
                 <div className="flex justify-between items-center flex-wrap gap-2">
                   <div>
